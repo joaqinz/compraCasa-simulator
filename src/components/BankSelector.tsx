@@ -1,4 +1,4 @@
-import { bankPresets, resolveBankTermPreset } from "@/lib/bankPresets";
+import { getBankPresetsSortedByCaeForTerm, resolveBankTermPreset } from "@/lib/bankPresets";
 import { Tooltip } from "./ui/Tooltip";
 import { useEffect, useRef, useState } from "react";
 
@@ -102,7 +102,7 @@ export function BankSelector({
   const selectedPreset = resolveBankTermPreset(selectedBankId, termYears);
   const selectedBank = selectedPreset?.bank;
   const selectedTermPreset = selectedPreset?.term;
-  const nonManualPresets = bankPresets.filter((bank) => bank.bankId !== "manual");
+  const sortedCaePresets = getBankPresetsSortedByCaeForTerm(termYears);
   const typicalMin = 20;
   const typicalMax = 30;
   const typicalStartPct = ((typicalMin - 15) / (40 - 15)) * 100;
@@ -138,9 +138,10 @@ export function BankSelector({
           value={selectedBankId}
           onChange={(event) => handleBankChange(event.target.value)}
         >
-          {nonManualPresets.map((bank) => (
+          {sortedCaePresets.map(({ bank, term }) => (
             <option key={bank.bankId} value={bank.bankId}>
-              {bank.bankName}
+              {bank.bankName} - CAE {term.caePct.toFixed(2)}%
+              {term.termYears !== termYears ? ` (${term.termYears} años)` : ""}
             </option>
           ))}
           <option value="manual">Ingreso manual</option>

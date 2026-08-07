@@ -39,7 +39,7 @@ export function InputPanel({ scenario, onChange }: Props) {
               unit={scenario.netMonthlyIncomeUnit}
               onValueChange={(value) => onChange({ netMonthlyIncomeAmount: value })}
               onUnitChange={(unit: MoneyUnit) => onChange({ netMonthlyIncomeUnit: unit })}
-              placeholder={scenario.netMonthlyIncomeUnit === "CLP" ? "ej. 2.500.000" : "ej. 62,3"}
+              placeholder={scenario.netMonthlyIncomeUnit === "CLP" ? "ej. 2.000.000" : "ej. 62,3"}
               tooltipTermId="ingreso-mensual-neto"
             />
             <p className="mt-1 text-[11px] text-slate-400">

@@ -39,7 +39,7 @@ export function resolveBankTermPreset(
   return { bank, term: sortedTerms[0] };
 }
 
-export function findLowestRatePresetForTerm(
+export function findLowestCaePresetForTerm(
   termYears: number
 ): { bank: BankPreset; term: BankTermPreset } | undefined {
   return bankPresets
@@ -47,8 +47,22 @@ export function findLowestRatePresetForTerm(
     .map((preset) => resolveBankTermPreset(preset.bankId, termYears))
     .filter((preset): preset is { bank: BankPreset; term: BankTermPreset } => Boolean(preset))
     .sort((a, b) =>
-      a.term.annualRatePct - b.term.annualRatePct ||
       a.term.caePct - b.term.caePct ||
+      a.term.annualRatePct - b.term.annualRatePct ||
       a.bank.bankName.localeCompare(b.bank.bankName)
     )[0];
+}
+
+export function getBankPresetsSortedByCaeForTerm(
+  termYears: number
+): Array<{ bank: BankPreset; term: BankTermPreset }> {
+  return bankPresets
+    .filter((preset) => preset.bankId !== "manual")
+    .map((preset) => resolveBankTermPreset(preset.bankId, termYears))
+    .filter((preset): preset is { bank: BankPreset; term: BankTermPreset } => Boolean(preset))
+    .sort((a, b) =>
+      a.term.caePct - b.term.caePct ||
+      a.term.annualRatePct - b.term.annualRatePct ||
+      a.bank.bankName.localeCompare(b.bank.bankName)
+    );
 }

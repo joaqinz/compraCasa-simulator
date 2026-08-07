@@ -13,7 +13,7 @@ import {
 import { getUFValue } from "@/lib/ufService";
 import { encodeScenarioToURL, decodeScenarioFromURL } from "@/lib/urlParams";
 import { toUF } from "@/lib/money";
-import { findLowestRatePresetForTerm, firstBankPreset, resolveBankTermPreset } from "@/lib/bankPresets";
+import { findLowestCaePresetForTerm, firstBankPreset, resolveBankTermPreset } from "@/lib/bankPresets";
 
 import { UFStatusBar } from "@/components/UFStatusBar";
 import { ModeSelector } from "@/components/ModeSelector";
@@ -29,7 +29,7 @@ const FINE_RATE_OFFSETS = Array.from({ length: 41 }, (_, index) =>
 );
 
 const defaultResolvedPreset =
-  findLowestRatePresetForTerm(defaults.termYears) ??
+  findLowestCaePresetForTerm(defaults.termYears) ??
   resolveBankTermPreset(firstBankPreset.bankId, defaults.termYears);
 
 const defaultScenario: ScenarioInput = {
@@ -145,7 +145,7 @@ export function App() {
       "termYears" in patch && patch.termYears != null && !("selectedBankId" in patch);
 
     const resolvedPreset = shouldPickLowestForTerm
-      ? findLowestRatePresetForTerm(nextScenario.termYears)
+      ? findLowestCaePresetForTerm(nextScenario.termYears)
       : resolveBankTermPreset(nextScenario.selectedBankId, nextScenario.termYears);
 
     if (!resolvedPreset) {
