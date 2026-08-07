@@ -139,19 +139,28 @@ function toIsoDate(raw) {
 
 function parseUfValueFromHtml(html) {
   const summaryMatch = html.match(/Monto:\s*([\d.]+)\s*UF\s*\(equivale a \$\s*([\d.]+)\)/i);
-  if (!summaryMatch) {
-    throw new Error("Could not extract the UF value from the CMF summary.");
+  if (summaryMatch) {
+    const montoUf = parseInteger(summaryMatch[1]);
+    const montoClp = parseInteger(summaryMatch[2]);
+    const ufValue = montoClp / montoUf;
+
+    if (!Number.isFinite(ufValue) || ufValue <= 0) {
+      throw new Error("The CMF page returned an invalid UF value.");
+    }
+
+    return ufValue;
   }
 
-  const montoUf = parseInteger(summaryMatch[1]);
-  const montoClp = parseInteger(summaryMatch[2]);
-  const ufValue = montoClp / montoUf;
+  const ufLineMatch = html.match(/Valor UF al d(?:&iacute;|í)a\s+\d{2}\/\d{2}\/\d{4}:\s*([\d.,]+)/i);
+  if (ufLineMatch) {
+    const ufValue = parseDecimal(ufLineMatch[1]);
 
-  if (!Number.isFinite(ufValue) || ufValue <= 0) {
-    throw new Error("The CMF page returned an invalid UF value.");
+    if (Number.isFinite(ufValue) && ufValue > 0) {
+      return ufValue;
+    }
   }
 
-  return ufValue;
+  throw new Error("Could not extract the UF value from the CMF summary.");
 }
 
 function extractRows(html) {
@@ -368,15 +377,41 @@ async function fetchCmfHtml(url) {
   return response.text();
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchCmfHtmlWithRetry(url, attempts = 3) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const html = await fetchCmfHtml(url);
+      if (html.includes("simuladorCreditoHipotecario")) {
+        return html;
+      }
+      throw new Error("CMF response did not include the mortgage comparison table.");
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await delay(750 * attempt);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 async function updateBankPresets() {
   const manualPreset = await loadExistingManualPreset();
-  const termResults = await Promise.all(
-    DEFAULT_PRESET_TERMS.map(async (termYears) => {
-      const sourceUrl = buildCmfUrl(buildCmfQuery(termYears));
-      const html = await fetchCmfHtml(sourceUrl);
-      return parseBankTermPresets(html, sourceUrl, termYears);
-    })
-  );
+  const termResults = [];
+
+  for (const termYears of DEFAULT_PRESET_TERMS) {
+    const sourceUrl = buildCmfUrl(buildCmfQuery(termYears));
+    const html = await fetchCmfHtmlWithRetry(sourceUrl);
+    termResults.push(parseBankTermPresets(html, sourceUrl, termYears));
+  }
+
   const presets = mergeTermPresets(termResults);
   const payload = [manualPreset, ...presets];
 

@@ -1,5 +1,73 @@
 import { bankPresets, resolveBankTermPreset } from "@/lib/bankPresets";
 import { Tooltip } from "./ui/Tooltip";
+import { useEffect, useRef, useState } from "react";
+
+type ManualNumberInputProps = {
+  value: number;
+  onValueChange: (value: number) => void;
+  step?: string;
+  min?: string;
+  max?: string;
+  className: string;
+};
+
+function ManualNumberInput({
+  value,
+  onValueChange,
+  step,
+  min,
+  max,
+  className,
+}: ManualNumberInputProps) {
+  const [display, setDisplay] = useState(String(value));
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) {
+      setDisplay(String(value));
+    }
+  }, [value]);
+
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextDisplay = event.target.value;
+    setDisplay(nextDisplay);
+
+    if (nextDisplay === "") return;
+
+    const parsed = parseFloat(nextDisplay);
+    if (!Number.isNaN(parsed)) {
+      onValueChange(parsed);
+    }
+  }
+
+  function handleBlur() {
+    focusedRef.current = false;
+
+    const parsed = parseFloat(display);
+    if (!Number.isNaN(parsed)) {
+      setDisplay(String(parsed));
+      return;
+    }
+
+    setDisplay(String(value));
+  }
+
+  return (
+    <input
+      type="number"
+      step={step}
+      min={min}
+      max={max}
+      className={className}
+      value={display}
+      onChange={handleChange}
+      onFocus={() => {
+        focusedRef.current = true;
+      }}
+      onBlur={handleBlur}
+    />
+  );
+}
 
 type Props = {
   selectedBankId: string;
@@ -40,6 +108,8 @@ export function BankSelector({
   const typicalStartPct = ((typicalMin - 15) / (40 - 15)) * 100;
   const typicalEndPct = ((typicalMax - 15) / (40 - 15)) * 100;
   const sliderProgressPct = ((maxDividendIncomeRatioPct - 15) / (40 - 15)) * 100;
+  const sliderValueLabelTransform =
+    sliderProgressPct < 8 ? "translateX(0)" : sliderProgressPct > 92 ? "translateX(-100%)" : "translateX(-50%)";
 
   function handleBankChange(bankId: string) {
     if (bankId === "manual") {
@@ -83,14 +153,13 @@ export function BankSelector({
             Tasa anual <Tooltip termId="tasa" />
           </label>
           {isManual ? (
-            <input
-              type="number"
+            <ManualNumberInput
               step="0.01"
               min="0"
               max="30"
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={annualRatePct}
-              onChange={(event) => onChange({ annualRatePct: parseFloat(event.target.value) || 0 })}
+              onValueChange={(value) => onChange({ annualRatePct: value })}
             />
           ) : (
             <p className="py-1.5 text-sm font-semibold text-slate-800">{annualRatePct}%</p>
@@ -102,14 +171,13 @@ export function BankSelector({
             CAE <Tooltip termId="cae" />
           </label>
           {isManual ? (
-            <input
-              type="number"
+            <ManualNumberInput
               step="0.01"
               min="0"
               max="30"
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={caePct}
-              onChange={(event) => onChange({ caePct: parseFloat(event.target.value) || 0 })}
+              onValueChange={(value) => onChange({ caePct: value })}
             />
           ) : (
             <p className="py-1.5 text-sm font-semibold text-slate-800">{caePct}%</p>
@@ -121,13 +189,12 @@ export function BankSelector({
             Seguro mensual (UF) <Tooltip termId="seguro-desgravamen" />
           </label>
           {isManual ? (
-            <input
-              type="number"
+            <ManualNumberInput
               step="0.01"
               min="0"
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={monthlyInsuranceUF}
-              onChange={(event) => onChange({ monthlyInsuranceUF: parseFloat(event.target.value) || 0 })}
+              onValueChange={(value) => onChange({ monthlyInsuranceUF: value })}
             />
           ) : (
             <p className="py-1.5 text-sm font-semibold text-slate-800">{monthlyInsuranceUF} UF</p>
@@ -147,14 +214,13 @@ export function BankSelector({
           Financiamiento máximo <Tooltip termId="financiamiento-maximo" />
         </div>
         {isManual ? (
-          <input
-            type="number"
+          <ManualNumberInput
             step="1"
             min="50"
             max="100"
             className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={maxFinancingPct}
-            onChange={(event) => onChange({ maxFinancingPct: parseFloat(event.target.value) || 80 })}
+            onValueChange={(value) => onChange({ maxFinancingPct: value })}
           />
         ) : (
           <p className="mt-1 text-lg font-bold text-slate-900">{maxFinancingPct}%</p>
@@ -199,8 +265,12 @@ export function BankSelector({
           Los bancos suelen exigir ≤25%. Subirlo asume que tu banco lo permite.
         </p>
         <div className="relative rounded-xl border border-slate-200 bg-white px-3 py-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <span className="font-semibold text-slate-800">Actual: {maxDividendIncomeRatioPct}% del ingreso neto</span>
+            <span className="text-slate-400">Rango típico: 20%-30%</span>
+          </div>
           <div
-            className="pointer-events-none absolute left-3 right-3 top-[22px] h-2 rounded-full bg-slate-100"
+            className="pointer-events-none absolute left-3 right-3 top-[44px] h-2 rounded-full bg-slate-100"
             aria-hidden="true"
           >
             <div
@@ -225,9 +295,16 @@ export function BankSelector({
             onChange={(event) => onChange({ maxDividendIncomeRatioPct: parseInt(event.target.value, 10) })}
             aria-label="Carga financiera máxima"
           />
+          <div className="relative mt-1 h-6 text-[11px] text-slate-500">
+            <span
+              className="absolute top-0 whitespace-nowrap rounded border border-blue-100 bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700"
+              style={{ left: `${sliderProgressPct}%`, transform: sliderValueLabelTransform }}
+            >
+              Actual {maxDividendIncomeRatioPct}%
+            </span>
+          </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
             <span>15%</span>
-            <span className="font-semibold text-slate-800">{maxDividendIncomeRatioPct}%</span>
             <span>40%</span>
           </div>
           <p className="mt-2 text-[11px] text-slate-400">Rango típico sombreado: 20% a 30% del ingreso neto.</p>

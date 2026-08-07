@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ScenarioInput, UFMetadata } from "@/types/finance";
 import defaults from "@/data/defaultAssumptions.json";
 import { runScenario, deriveAffordabilityStatus } from "@/lib/affordability";
@@ -103,6 +103,10 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [copyToast, setCopyToast] = useState<CopyToast | null>(null);
   const { scenario, ufMetadata, ufLoading, ufError } = state;
+  const latestIncomeRef = useRef({
+    amount: scenario.netMonthlyIncomeAmount,
+    unit: scenario.netMonthlyIncomeUnit,
+  });
 
   const output = useMemo(() => runScenario(scenario), [scenario]);
   const status = useMemo(() => deriveAffordabilityStatus(output, scenario), [output, scenario]);
@@ -193,7 +197,24 @@ export function App() {
   }
 
   function handleChange(patch: Partial<ScenarioInput>) {
-    const presetAwarePatch = applyPresetForSelectedBank(scenario, patch);
+    let nextPatch = patch;
+
+    if ("netMonthlyIncomeAmount" in patch || "netMonthlyIncomeUnit" in patch) {
+      latestIncomeRef.current = {
+        amount: "netMonthlyIncomeAmount" in patch ? patch.netMonthlyIncomeAmount : latestIncomeRef.current.amount,
+        unit: patch.netMonthlyIncomeUnit ?? latestIncomeRef.current.unit,
+      };
+    }
+
+    if ("mode" in patch && !("netMonthlyIncomeAmount" in patch) && !("netMonthlyIncomeUnit" in patch)) {
+      nextPatch = {
+        ...patch,
+        netMonthlyIncomeAmount: latestIncomeRef.current.amount,
+        netMonthlyIncomeUnit: latestIncomeRef.current.unit,
+      };
+    }
+
+    const presetAwarePatch = applyPresetForSelectedBank(scenario, nextPatch);
     dispatch({ type: "UPDATE_SCENARIO", patch: syncSavingsPie(presetAwarePatch, scenario, output) });
   }
 
@@ -231,6 +252,13 @@ export function App() {
       dispatch({ type: "LOAD_FROM_URL", patch });
     }
   }, []);
+
+  useEffect(() => {
+    latestIncomeRef.current = {
+      amount: scenario.netMonthlyIncomeAmount,
+      unit: scenario.netMonthlyIncomeUnit,
+    };
+  }, [scenario.netMonthlyIncomeAmount, scenario.netMonthlyIncomeUnit]);
 
   useEffect(() => {
     dispatch({ type: "SET_UF_LOADING" });

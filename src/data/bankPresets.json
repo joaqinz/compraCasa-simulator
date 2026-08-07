@@ -49,18 +49,18 @@
       {
         "termYears": 20,
         "annualRatePct": 4.79,
-        "caePct": 5.14,
-        "monthlyInsuranceUF": 0.5856,
+        "caePct": 5.11,
+        "monthlyInsuranceUF": 0.5312,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=20&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-04-30"
+        "lastUpdated": "2026-07-29"
       },
       {
         "termYears": 25,
         "annualRatePct": 4.78,
-        "caePct": 5.11,
-        "monthlyInsuranceUF": 0.5856,
+        "caePct": 5.08,
+        "monthlyInsuranceUF": 0.5312,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=25&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-04-30"
+        "lastUpdated": "2026-07-29"
       }
     ],
     "availableTermsYears": [
@@ -160,7 +160,7 @@
         "caePct": 5.02,
         "monthlyInsuranceUF": 0.5664,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=20&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-03-09"
+        "lastUpdated": "2026-06-04"
       },
       {
         "termYears": 25,
@@ -168,7 +168,7 @@
         "caePct": 5.11,
         "monthlyInsuranceUF": 0.5664,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=25&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-03-09"
+        "lastUpdated": "2026-06-04"
       }
     ],
     "availableTermsYears": [
@@ -228,27 +228,27 @@
     "termPresets": [
       {
         "termYears": 20,
-        "annualRatePct": 4.5,
-        "caePct": 5.1,
-        "monthlyInsuranceUF": 1.0048,
+        "annualRatePct": 4.35,
+        "caePct": 4.63,
+        "monthlyInsuranceUF": 0.4555,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=20&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2025-08-21"
+        "lastUpdated": "2026-08-04"
       },
       {
         "termYears": 25,
-        "annualRatePct": 4.5,
-        "caePct": 5.07,
-        "monthlyInsuranceUF": 1.0048,
+        "annualRatePct": 4.35,
+        "caePct": 4.61,
+        "monthlyInsuranceUF": 0.4555,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=25&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2025-08-21"
+        "lastUpdated": "2026-08-04"
       },
       {
         "termYears": 30,
-        "annualRatePct": 4.5,
-        "caePct": 5.05,
-        "monthlyInsuranceUF": 1.0048,
+        "annualRatePct": 4.35,
+        "caePct": 4.6,
+        "monthlyInsuranceUF": 0.4555,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=30&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2025-08-21"
+        "lastUpdated": "2026-08-04"
       }
     ],
     "availableTermsYears": [
@@ -267,29 +267,29 @@
     "termPresets": [
       {
         "termYears": 20,
-        "annualRatePct": 4.64,
-        "caePct": 5.21,
+        "annualRatePct": 4.6,
+        "caePct": 5.17,
         "monthlyInsuranceUF": 0.9522,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=20&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-04-13",
+        "lastUpdated": "2026-07-06",
         "notes": "Esta institucion solamente ofrece el seguro de incendio con adicional de sismo."
       },
       {
         "termYears": 25,
-        "annualRatePct": 4.73,
-        "caePct": 5.27,
+        "annualRatePct": 4.7,
+        "caePct": 5.24,
         "monthlyInsuranceUF": 0.9522,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=25&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-04-13",
+        "lastUpdated": "2026-07-06",
         "notes": "Esta institucion solamente ofrece el seguro de incendio con adicional de sismo."
       },
       {
         "termYears": 30,
-        "annualRatePct": 4.81,
-        "caePct": 5.32,
+        "annualRatePct": 4.79,
+        "caePct": 5.3,
         "monthlyInsuranceUF": 0.9522,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=30&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-04-13",
+        "lastUpdated": "2026-07-06",
         "notes": "Esta institucion solamente ofrece el seguro de incendio con adicional de sismo."
       }
     ],
@@ -309,11 +309,11 @@
     "termPresets": [
       {
         "termYears": 20,
-        "annualRatePct": 4.67,
-        "caePct": 5.44,
+        "annualRatePct": 4.6,
+        "caePct": 5.38,
         "monthlyInsuranceUF": 1.3045,
         "sourceUrl": "https://servicios.cmfchile.cl/simuladorhipotecario/aplicacion?indice=101.2.3&maxuf=20000&minuf=100&maxpeso=803202800&minpeso=4016014&paso=2&template=entidades&tipomoneda=1&monto=3200&tipocredito=3&tipotasa=1&plazo=20&inst=OK&marcados=1&marcados=9&marcados=14&marcados=16&marcados=37&marcados=39&marcados=51&marcados=672",
-        "lastUpdated": "2026-04-15",
+        "lastUpdated": "2026-07-08",
         "notes": "Esta institucion solamente ofrece el seguro de incendio con adicional de sismo."
       }
     ],
