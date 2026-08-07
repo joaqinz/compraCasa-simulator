@@ -30,8 +30,8 @@ export function InputPanel({ scenario, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
-        <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <MoneyInput
               label="Ingreso mensual neto"
@@ -72,43 +72,41 @@ export function InputPanel({ scenario, onChange }: Props) {
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-slate-700">Plazo del crédito</label>
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plazo del crédito">
-              {TERM_OPTIONS.map((term, index) => (
-                <button
-                  key={term}
-                  ref={(element) => {
-                    termButtonRefs.current[index] = element;
-                  }}
-                  type="button"
-                  onClick={() => onChange({ termYears: term })}
-                  onKeyDown={(event) => handleTermKeyDown(index, event)}
-                  className={`rounded-lg border py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                    scenario.termYears === term
-                      ? "border-blue-500 bg-blue-500 text-white shadow-sm"
-                      : "border-slate-300 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
-                  }`}
-                >
-                  {term} años
-                </button>
-              ))}
-            </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-slate-700">Plazo del crédito</label>
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plazo del crédito">
+            {TERM_OPTIONS.map((term, index) => (
+              <button
+                key={term}
+                ref={(element) => {
+                  termButtonRefs.current[index] = element;
+                }}
+                type="button"
+                onClick={() => onChange({ termYears: term })}
+                onKeyDown={(event) => handleTermKeyDown(index, event)}
+                className={`rounded-lg border py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                  scenario.termYears === term
+                    ? "border-blue-500 bg-blue-500 text-white shadow-sm"
+                    : "border-slate-300 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                }`}
+              >
+                {term} años
+              </button>
+            ))}
           </div>
         </div>
-
-        <BankSelector
-          selectedBankId={scenario.selectedBankId}
-          termYears={scenario.termYears}
-          annualRatePct={scenario.annualRatePct}
-          caePct={scenario.caePct}
-          monthlyInsuranceUF={scenario.monthlyInsuranceUF}
-          maxFinancingPct={scenario.maxFinancingPct}
-          maxDividendIncomeRatioPct={scenario.maxDividendIncomeRatioPct}
-          onChange={onChange}
-        />
       </div>
+
+      <BankSelector
+        selectedBankId={scenario.selectedBankId}
+        termYears={scenario.termYears}
+        annualRatePct={scenario.annualRatePct}
+        caePct={scenario.caePct}
+        monthlyInsuranceUF={scenario.monthlyInsuranceUF}
+        maxFinancingPct={scenario.maxFinancingPct}
+        maxDividendIncomeRatioPct={scenario.maxDividendIncomeRatioPct}
+        onChange={onChange}
+      />
     </div>
   );
 }
