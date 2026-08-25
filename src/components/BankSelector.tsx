@@ -77,9 +77,12 @@ type Props = {
   monthlyInsuranceUF: number;
   maxFinancingPct: number;
   maxDividendIncomeRatioPct: number;
+  loanAmountUF?: number;
+  calculatedCaePct?: number;
   onChange: (patch: Partial<{
     selectedBankId: string;
     termYears: number;
+    downPaymentPct: number;
     annualRatePct: number;
     caePct: number;
     monthlyInsuranceUF: number;
@@ -114,6 +117,8 @@ export function BankSelector({
   monthlyInsuranceUF,
   maxFinancingPct,
   maxDividendIncomeRatioPct,
+  loanAmountUF,
+  calculatedCaePct,
   onChange,
 }: Props) {
   const isManual = selectedBankId === "manual";
@@ -150,8 +155,8 @@ export function BankSelector({
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)]">
+    <section className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+      <div className="grid gap-4">
         <div className="min-w-0">
           <div className="mb-1 flex items-center justify-between gap-2">
             <label className="text-sm font-medium text-slate-700">Banco / Escenario</label>
@@ -173,9 +178,16 @@ export function BankSelector({
             <option value="manual">Ingreso manual</option>
           </select>
           <p className="mt-1 text-[11px] text-slate-400">Ordenado por CAE para el plazo seleccionado.</p>
+          <p className="mt-2 rounded-lg bg-white px-2.5 py-2 text-[11px] leading-4 text-slate-500">
+            {isManual
+              ? "CAE estimada con tasa anual + seguro mensual fijo. No incluye gastos que no hayas ingresado."
+              : `Dividendo: tasa anual + seguro. CAE: comparación de costo total. Pie mínimo estimado: ${100 - maxFinancingPct}%.`}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">Condiciones del crédito</p>
+          <div className="grid grid-cols-2 gap-2">
           <Metric label="Tasa anual" tooltipTermId="tasa">
             {isManual ? (
               <ManualNumberInput
@@ -191,19 +203,12 @@ export function BankSelector({
             )}
           </Metric>
 
-          <Metric label="CAE" tooltipTermId="cae">
-            {isManual ? (
-              <ManualNumberInput
-                step="0.01"
-                min="0"
-                max="30"
-                className={metricInputClass}
-                value={caePct}
-                onValueChange={(value) => onChange({ caePct: value })}
-              />
-            ) : (
-              `${caePct.toFixed(2)}%`
-            )}
+          <Metric label={isManual ? "CAE estimada" : "CAE"} tooltipTermId="cae">
+            {isManual
+              ? calculatedCaePct != null
+                ? `${calculatedCaePct.toFixed(2)}%`
+                : "Completa el escenario"
+              : `${caePct.toFixed(2)}%`}
           </Metric>
 
           <Metric label="Seguro mensual" tooltipTermId="seguro-desgravamen">
@@ -240,6 +245,7 @@ export function BankSelector({
               {selectedBank?.availableTermsYears.join(", ") ?? "15, 20, 25, 30"} años
             </span>
           </Metric>
+          </div>
         </div>
       </div>
 
@@ -266,7 +272,35 @@ export function BankSelector({
         </div>
       )}
 
-      <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 lg:grid-cols-[minmax(180px,260px)_minmax(0,1fr)]">
+      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 text-sm" aria-hidden="true">◆</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-amber-900">¿Quieres simular con FOGAES?</p>
+            <p className="mt-1 text-[11px] leading-4 text-amber-900/75">
+              Usa Ingreso manual, 90% de financiamiento (10% de pie) y la tasa cotizada por tu banco.
+            </p>
+            <button
+              type="button"
+              onClick={() => onChange({ selectedBankId: "manual", downPaymentPct: 10, maxFinancingPct: 90 })}
+              className="mt-2 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-amber-900 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              Configurar escenario FOGAES
+            </button>
+            <p className="mt-2 text-[10px] leading-4 text-amber-900/65">
+              Parámetros referenciales; el banco confirma la tasa y elegibilidad. <a href="https://fogaes.cl/sitio/requisitos/" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-950">Ver requisitos</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {isManual && calculatedCaePct != null && loanAmountUF != null && (
+        <p className="mt-2 text-[10px] leading-4 text-slate-400">
+          Estimada sobre un crédito de {loanAmountUF.toFixed(2)} UF con seguro mensual fijo. Es referencial, no una CAE bancaria.
+        </p>
+      )}
+
+      <div className="mt-4 grid gap-3 border-t border-slate-200/80 pt-4">
         <div>
           <label className="flex items-center text-xs font-medium text-slate-600">
             Carga financiera máxima <Tooltip termId="carga-financiera" />

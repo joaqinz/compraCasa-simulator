@@ -19,18 +19,18 @@ if (-not $?) { Write-Host "git add failed." -ForegroundColor Red; exit 1 }
 # ── 3. Commit ─────────────────────────────────────────────────────────────────
 Write-Host "[2/3] Committing: $Message" -ForegroundColor Cyan
 git commit -m $Message
-if (-not $?) {
-    Write-Host "Nothing to commit or commit failed." -ForegroundColor Yellow
-    # Still try to push in case there are already-committed changes to push
-}
+# Don't exit on no-op commit — may still need to push or deploy
 
-# ── 4. Push → triggers Netlify auto-deploy ────────────────────────────────────
-Write-Host "[3/3] Pushing to origin/main (triggers Netlify deploy)..." -ForegroundColor Cyan
+# ── 4. Push ───────────────────────────────────────────────────────────────────
+Write-Host "[3/3] Pushing to origin/main..." -ForegroundColor Cyan
 git push origin main
+
+# ── 5. Deploy via Netlify CLI (reliable, bypasses GitHub webhook) ─────────────
+Write-Host "`n[deploy] Running netlify deploy --prod..." -ForegroundColor Cyan
+netlify deploy --prod
 if ($?) {
-    Write-Host "`nDone. Netlify will deploy automatically from main." -ForegroundColor Green
-    Write-Host "Check status: https://app.netlify.com" -ForegroundColor DarkGray
+    Write-Host "`nDone. Site is live at https://compracasa-simulator.netlify.app" -ForegroundColor Green
 } else {
-    Write-Host "Push failed." -ForegroundColor Red
+    Write-Host "Netlify deploy failed — check logs above." -ForegroundColor Red
     exit 1
 }

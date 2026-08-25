@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { ScenarioOutput, ScenarioInput, AffordabilityStatus } from "@/types/finance";
 import { StatusBadge } from "./ui/StatusBadge";
 import { Tooltip } from "./ui/Tooltip";
+import { AFFORDABILITY_TOLERANCE_UF } from "@/lib/affordability";
 import { formatCLP, formatUF } from "@/lib/formatters";
 import clsx from "clsx";
 
@@ -31,7 +32,7 @@ function Card({ title, value, sub, tooltipId, highlight, children }: CardProps) 
   return (
     <div
       className={clsx(
-        "rounded-xl border bg-white p-4",
+        "surface-card rounded-2xl p-5",
         highlight === "positive"
           ? "border-emerald-200"
           : highlight === "negative"
@@ -123,6 +124,15 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
     };
   }
 
+  if (input.netMonthlyIncomeAmount == null) {
+    return {
+      label: "tu objetivo",
+      title: "Plan base de tu objetivo",
+      body: "Aquí puedes ver el dividendo, el pie y el ingreso mensual necesario para esta propiedad.",
+      action: "Ingresa tu ingreso cuando quieras comparar tu situación actual con este objetivo.",
+    };
+  }
+
   if (output.bindingConstraint === "bank_policy") {
     return {
       label: "la política del banco",
@@ -159,6 +169,23 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
     };
   }
 
+  const closeIncomeGap = incomeGap > 0 && incomeGap <= AFFORDABILITY_TOLERANCE_UF;
+  const closeSavingsGap = savingsGap > 0 && savingsGap <= AFFORDABILITY_TOLERANCE_UF;
+
+  if (output.feasible && (closeIncomeGap || closeSavingsGap)) {
+    return {
+      label: "un margen estrecho",
+      title: "Escenario justo",
+      body:
+        closeIncomeGap && closeSavingsGap
+          ? "El objetivo calza, pero tu ingreso y tus ahorros quedan dentro de un margen muy estrecho."
+          : closeIncomeGap
+            ? "El objetivo calza, aunque tu ingreso queda dentro de un margen muy estrecho."
+            : "El objetivo calza, aunque tus ahorros quedan dentro de un margen muy estrecho.",
+      action: "Conviene mantener un pequeño colchón antes de comprometerte.",
+    };
+  }
+
   return {
     label: "tu escenario actual",
     title: "Restricción activa: ninguna",
@@ -175,15 +202,15 @@ export function ResultCards({ output, input, status }: Props) {
   const constraintInsight = useMemo(() => getConstraintInsight(output, input), [input, output]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {(output.realisticMaxPropertyUF != null || output.propertyPriceUF != null) && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="result-hero rounded-3xl p-6 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium text-slate-500">
-                {input.mode === "target_property" ? "Propiedad objetivo" : "Propiedad máxima estimada"}
+                {input.mode === "target_property" ? "Propiedad objetivo" : "Tu propiedad máxima estimada"}
               </p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
                 {formatPair(output.realisticMaxPropertyUF ?? output.propertyPriceUF ?? 0, uf)}
               </p>
             </div>
@@ -191,7 +218,7 @@ export function ResultCards({ output, input, status }: Props) {
           </div>
 
           {constraintInsight && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mt-5 rounded-2xl border border-slate-200/80 bg-white/70 p-4">
               <p className="text-sm font-semibold text-slate-900">{constraintInsight.title}</p>
               <p className="mt-1 text-sm text-slate-600">{constraintInsight.body}</p>
               <p className="mt-2 text-sm font-medium text-blue-700">{constraintInsight.action}</p>
@@ -203,7 +230,7 @@ export function ResultCards({ output, input, status }: Props) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {output.fullMonthlyDividendUF != null && (
           <Card
-            title="Dividendo mensual estimado"
+            title={input.mode === "income" ? "Dividendo de esta propiedad" : "Dividendo mensual estimado"}
             value={formatPair(output.fullMonthlyDividendUF, uf)}
             sub="Incluye seguros"
             tooltipId="dividendo"
@@ -212,11 +239,17 @@ export function ResultCards({ output, input, status }: Props) {
 
         {output.requiredIncomeUF != null && (
           <Card
-            title="Ingreso requerido"
+            title={input.mode === "income" ? "Ingreso necesario para esta propiedad" : "Ingreso requerido"}
             value={formatPair(output.requiredIncomeUF, uf)}
             tooltipId="carga-financiera"
             highlight={
-              incomeUF != null ? (incomeUF >= output.requiredIncomeUF ? "positive" : "negative") : undefined
+              incomeUF != null
+                ? incomeUF >= output.requiredIncomeUF
+                  ? "positive"
+                  : incomeUF >= output.requiredIncomeUF - AFFORDABILITY_TOLERANCE_UF
+                    ? "neutral"
+                    : "negative"
+                : undefined
             }
           />
         )}
@@ -227,7 +260,13 @@ export function ResultCards({ output, input, status }: Props) {
             value={formatPair(output.downPaymentUF, uf)}
             tooltipId="pie"
             highlight={
-              savingsUF != null ? (savingsUF >= output.downPaymentUF ? "positive" : "negative") : undefined
+              savingsUF != null
+                ? savingsUF >= output.downPaymentUF
+                  ? "positive"
+                  : savingsUF >= output.downPaymentUF - AFFORDABILITY_TOLERANCE_UF
+                    ? "neutral"
+                    : "negative"
+                : undefined
             }
           />
         )}
@@ -237,9 +276,11 @@ export function ResultCards({ output, input, status }: Props) {
         )}
       </div>
 
-      {input.mode === "target_property" && ((output.incomeGapUF ?? 0) > 0 || (output.savingsGapUF ?? 0) > 0) ? (
+      {input.mode === "target_property" &&
+      ((output.incomeGapUF ?? 0) > AFFORDABILITY_TOLERANCE_UF ||
+        (output.savingsGapUF ?? 0) > AFFORDABILITY_TOLERANCE_UF) ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {(output.incomeGapUF ?? 0) > 0 && (
+          {(output.incomeGapUF ?? 0) > AFFORDABILITY_TOLERANCE_UF && (
             <Card
               title="Brecha de ingreso"
               value={`+${formatPair(output.incomeGapUF ?? 0, uf)}/mes`}
@@ -247,7 +288,7 @@ export function ResultCards({ output, input, status }: Props) {
               sub="Ingreso adicional necesario"
             />
           )}
-          {(output.savingsGapUF ?? 0) > 0 && (
+          {(output.savingsGapUF ?? 0) > AFFORDABILITY_TOLERANCE_UF && (
             <Card
               title="Brecha de ahorros"
               value={`+${formatPair(output.savingsGapUF ?? 0, uf)}`}
@@ -259,7 +300,7 @@ export function ResultCards({ output, input, status }: Props) {
       ) : null}
 
       {(output.maxPropertyByIncomeUF != null || output.maxPropertyBySavingsUF != null) && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+        <div className="surface-card rounded-2xl p-5 text-sm">
           <p className="mb-2 font-medium text-slate-700">Detalle de restricciones</p>
           <div className="flex flex-col gap-1">
             {output.maxPropertyByIncomeUF != null && (
@@ -278,7 +319,7 @@ export function ResultCards({ output, input, status }: Props) {
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white">
+      <div className="surface-card overflow-hidden rounded-2xl">
         <button
           type="button"
           onClick={() => setShowFormulaDetails((value) => !value)}

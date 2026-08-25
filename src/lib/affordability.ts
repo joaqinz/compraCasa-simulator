@@ -16,6 +16,7 @@ import {
 
 const YELLOW_GAP_THRESHOLD = 0.10; // within 10% = yellow
 const GREEN_EXCESS_THRESHOLD = 0.05; // more than 5% headroom = green
+export const AFFORDABILITY_TOLERANCE_UF = 1;
 
 export function runScenario(input: ScenarioInput): ScenarioOutput {
   const {
@@ -77,8 +78,30 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
 
   if (input.mode === "income") {
     const bindingConstraint = deriveBindingConstraint(maxPropertyByIncomeUF, maxPropertyBySavingsUF, undefined);
+    const propertyPriceUF = realisticMaxPropertyUF;
+    const downPaymentUF = propertyPriceUF != null
+      ? calculateDownPaymentUF(propertyPriceUF, effectiveEquityRatio * 100)
+      : undefined;
+    const loanAmountUF = propertyPriceUF != null
+      ? calculateLoanAmountUF(propertyPriceUF, effectiveEquityRatio * 100)
+      : undefined;
+    const baseMonthlyDividendUF = loanAmountUF != null
+      ? calculateMonthlyPaymentUF(loanAmountUF, annualRatePct, termYears)
+      : undefined;
+    const fullMonthlyDividendUF = baseMonthlyDividendUF != null
+      ? calculateFullDividendUF(baseMonthlyDividendUF, monthlyInsuranceUF)
+      : undefined;
+    const requiredIncomeUF = fullMonthlyDividendUF != null
+      ? calculateRequiredIncomeUF(fullMonthlyDividendUF, maxDividendIncomeRatioPct)
+      : undefined;
 
     return {
+      propertyPriceUF,
+      downPaymentUF,
+      loanAmountUF,
+      baseMonthlyDividendUF,
+      fullMonthlyDividendUF,
+      requiredIncomeUF,
       maxPropertyByIncomeUF,
       maxPropertyBySavingsUF,
       realisticMaxPropertyUF,
@@ -114,8 +137,8 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
   const savingsGapUF = savingsUF != null ? downPaymentUF - savingsUF : undefined;
 
   const feasible =
-    (incomeGapUF == null || incomeGapUF <= 0) &&
-    (savingsGapUF == null || savingsGapUF <= 0);
+    (incomeGapUF == null || incomeGapUF <= AFFORDABILITY_TOLERANCE_UF) &&
+    (savingsGapUF == null || savingsGapUF <= AFFORDABILITY_TOLERANCE_UF);
 
   const bindingConstraint = deriveBindingConstraint(maxPropertyByIncomeUF, maxPropertyBySavingsUF, propertyPriceUF);
 
@@ -144,8 +167,8 @@ function deriveBindingConstraint(
   if (byIncome == null && bySavings == null) return "none";
 
   if (target != null) {
-    const incomeShort = byIncome != null && byIncome < target;
-    const savingsShort = bySavings != null && bySavings < target;
+    const incomeShort = byIncome != null && byIncome < target - AFFORDABILITY_TOLERANCE_UF;
+    const savingsShort = bySavings != null && bySavings < target - AFFORDABILITY_TOLERANCE_UF;
     if (incomeShort && savingsShort) return "income_and_savings";
     if (incomeShort) return "income";
     if (savingsShort) return "savings";
@@ -163,6 +186,14 @@ export function deriveAffordabilityStatus(
   output: ScenarioOutput,
   input: ScenarioInput
 ): AffordabilityStatus {
+  if (
+    input.mode === "target_property" &&
+    input.netMonthlyIncomeAmount == null &&
+    output.bindingConstraint !== "bank_policy"
+  ) {
+    return "neutral";
+  }
+
   if (!output.feasible) {
     const incomeGapRatio =
       output.incomeGapUF != null && output.requiredIncomeUF
@@ -176,6 +207,11 @@ export function deriveAffordabilityStatus(
     const maxGap = Math.max(incomeGapRatio ?? 0, savingsGapRatio ?? 0);
     return maxGap <= YELLOW_GAP_THRESHOLD ? "yellow" : "red";
   }
+
+  const hasNarrowGap = [output.incomeGapUF, output.savingsGapUF].some(
+    (gap) => gap != null && gap > 0 && gap <= AFFORDABILITY_TOLERANCE_UF
+  );
+  if (hasNarrowGap) return "yellow";
 
   // feasible — check headroom
   const incomeUF =

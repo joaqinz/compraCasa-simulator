@@ -37,8 +37,8 @@ export function ModeSelector({ mode, onChange }: Props) {
 
   return (
     <div>
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">¿Qué sabes hoy?</p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="tablist" aria-label="Modo del simulador">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-50/65">¿Qué sabes hoy?</p>
+      <div className="grid grid-cols-1 gap-2 rounded-2xl border border-white/15 bg-black/10 p-2 sm:grid-cols-2" role="tablist" aria-label="Modo del simulador">
         {modes.map((entry, index) => (
           <button
             key={entry.id}
@@ -53,17 +53,20 @@ export function ModeSelector({ mode, onChange }: Props) {
             className={clsx(
               "rounded-xl border-2 px-4 py-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-400",
               mode === entry.id
-                ? "border-blue-500 bg-blue-50 shadow-sm"
-                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
+                ? "border-amber-200 bg-white shadow-lg shadow-black/10"
+                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
             )}
           >
-            <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+            <span className={clsx(
+              "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+              mode === entry.id ? "bg-amber-100 text-amber-800" : "bg-white/10 text-cyan-50/70"
+            )}>
               {entry.badge}
             </span>
-            <p className={clsx("mt-2 text-sm font-semibold", mode === entry.id ? "text-blue-700" : "text-slate-800")}>
+            <p className={clsx("mt-2 text-sm font-semibold", mode === entry.id ? "text-slate-900" : "text-white")}>
               {entry.title}
             </p>
-            <p className="mt-0.5 text-xs leading-tight text-slate-500">{entry.subtitle}</p>
+            <p className={clsx("mt-0.5 text-xs leading-tight", mode === entry.id ? "text-slate-500" : "text-cyan-50/65")}>{entry.subtitle}</p>
           </button>
         ))}
       </div>

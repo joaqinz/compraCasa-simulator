@@ -1,6 +1,6 @@
 export type MoneyUnit = "CLP" | "UF";
 export type DisplayUnit = "CLP" | "UF" | "BOTH";
-export type AffordabilityStatus = "green" | "yellow" | "red";
+export type AffordabilityStatus = "green" | "yellow" | "red" | "neutral";
 export type BindingConstraint =
   | "income"
   | "savings"

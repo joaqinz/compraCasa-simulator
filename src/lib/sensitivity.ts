@@ -1,5 +1,5 @@
 import type { ScenarioInput, SensitivityRow, BindingConstraint } from "@/types/finance";
-import { runScenario } from "./affordability";
+import { AFFORDABILITY_TOLERANCE_UF, runScenario } from "./affordability";
 import {
   calculateMonthlyPaymentUF,
   calculateFullDividendUF,
@@ -155,7 +155,10 @@ export function generateTargetTermSensitivity(
       termYears,
       requiredIncomeUF: out.requiredIncomeUF ?? 0,
       dividendUF: out.fullMonthlyDividendUF ?? 0,
-      feasible: incomeUF != null ? incomeUF >= (out.requiredIncomeUF ?? 0) : true,
+      feasible:
+        incomeUF != null
+          ? incomeUF >= (out.requiredIncomeUF ?? 0) - AFFORDABILITY_TOLERANCE_UF
+          : true,
     };
   });
 }
@@ -216,7 +219,7 @@ export function generatePieRateSensitivity(
         annualRatePct: rate,
         dividendUF: dividend,
         requiredIncomeUF: required,
-        feasible: incomeUF != null ? incomeUF >= required : true,
+        feasible: incomeUF != null ? incomeUF >= required - AFFORDABILITY_TOLERANCE_UF : true,
       });
     }
   }
@@ -323,8 +326,8 @@ export function generateSensitivityTable(
       fullDividendUF: full,
       requiredIncomeUF: req,
       feasible:
-        (incomeUF == null || incomeUF >= req) &&
-        (savingsUF == null || savingsUF >= dp),
+        (incomeUF == null || incomeUF >= req - AFFORDABILITY_TOLERANCE_UF) &&
+        (savingsUF == null || savingsUF >= dp - AFFORDABILITY_TOLERANCE_UF),
     };
   });
 }

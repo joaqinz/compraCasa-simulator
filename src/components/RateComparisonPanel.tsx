@@ -1,4 +1,5 @@
 import type { RatePoint } from "@/lib/sensitivity";
+import { AFFORDABILITY_TOLERANCE_UF } from "@/lib/affordability";
 import { formatUF, formatCLP } from "@/lib/formatters";
 import clsx from "clsx";
 
@@ -20,8 +21,14 @@ export function RateComparisonPanel({ data, currentRate, ufValueCLP, userIncomeU
 
   const hasIncome = userIncomeUF != null;
   const currentPoint = data.find((point) => Math.abs(point.annualRatePct - currentRate) < 0.01);
-  const currentFeasible = currentPoint != null && hasIncome ? userIncomeUF >= currentPoint.requiredIncomeUF : null;
-  const bestFeasible = hasIncome ? data.find((point) => userIncomeUF >= point.requiredIncomeUF) : null;
+  const currentFeasible =
+    currentPoint != null && hasIncome
+      ? userIncomeUF >= currentPoint.requiredIncomeUF - AFFORDABILITY_TOLERANCE_UF
+      : null;
+  const bestFeasible =
+    hasIncome
+      ? data.find((point) => userIncomeUF >= point.requiredIncomeUF - AFFORDABILITY_TOLERANCE_UF)
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -33,7 +40,10 @@ export function RateComparisonPanel({ data, currentRate, ufValueCLP, userIncomeU
       <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6">
         {data.map((point) => {
           const isCurrent = Math.abs(point.annualRatePct - currentRate) < 0.01;
-          const feasible = hasIncome ? userIncomeUF >= point.requiredIncomeUF : null;
+          const feasible =
+            hasIncome
+              ? userIncomeUF >= point.requiredIncomeUF - AFFORDABILITY_TOLERANCE_UF
+              : null;
           const isFirstFeasible =
             hasIncome && feasible && bestFeasible?.annualRatePct === point.annualRatePct && !currentFeasible;
 

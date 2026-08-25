@@ -13,6 +13,7 @@ import {
 import { getUFValue } from "@/lib/ufService";
 import { encodeScenarioToURL, decodeScenarioFromURL } from "@/lib/urlParams";
 import { toUF } from "@/lib/money";
+import { calculateSimplifiedCaePct } from "@/lib/mortgage";
 import { findLowestCaePresetForTerm, firstBankPreset, resolveBankTermPreset } from "@/lib/bankPresets";
 
 import { UFStatusBar } from "@/components/UFStatusBar";
@@ -110,6 +111,18 @@ export function App() {
 
   const output = useMemo(() => runScenario(scenario), [scenario]);
   const status = useMemo(() => deriveAffordabilityStatus(output, scenario), [output, scenario]);
+  const calculatedManualCaePct = useMemo(
+    () =>
+      scenario.selectedBankId === "manual" && output.loanAmountUF != null
+        ? calculateSimplifiedCaePct(
+            output.loanAmountUF,
+            scenario.annualRatePct,
+            scenario.termYears,
+            scenario.monthlyInsuranceUF
+          )
+        : undefined,
+    [output.loanAmountUF, scenario.selectedBankId, scenario.annualRatePct, scenario.termYears, scenario.monthlyInsuranceUF]
+  );
 
   const targetPropertyUF = useMemo(
     () =>
@@ -123,15 +136,15 @@ export function App() {
     const hasIncome = (scenario.netMonthlyIncomeAmount ?? 0) > 0;
 
     if (scenario.mode === "target_property") {
-      return hasIncome && (scenario.targetPropertyAmount ?? 0) > 0;
+      return (scenario.targetPropertyAmount ?? 0) > 0;
     }
 
-    return hasIncome && (scenario.savingsAmount ?? 0) > 0;
+    return hasIncome && scenario.savingsAmount != null && scenario.savingsAmount >= 0;
   }, [scenario]);
 
   const emptyStateCopy =
     scenario.mode === "target_property"
-      ? "Ingresa tu ingreso y el precio objetivo para ver resultados y sensibilidades."
+      ? "Ingresa el precio objetivo para ver cuánto ingreso, pie y dividendo necesitas."
       : "Ingresa tu ingreso y tus ahorros para ver resultados y sensibilidades.";
 
   function applyPresetForSelectedBank(base: ScenarioInput, patch: Partial<ScenarioInput>): Partial<ScenarioInput> {
@@ -162,40 +175,6 @@ export function App() {
     };
   }
 
-  function syncSavingsPie(
-    patch: Partial<ScenarioInput>,
-    current: ScenarioInput,
-    currentOutput: typeof output
-  ): Partial<ScenarioInput> {
-    if (current.mode !== "income") return patch;
-    if (!currentOutput.maxPropertyByIncomeUF || currentOutput.maxPropertyByIncomeUF <= 0) return patch;
-
-    const maxLoanUF = currentOutput.maxPropertyByIncomeUF * (1 - current.downPaymentPct / 100);
-    const savingsChanged = ("savingsAmount" in patch || "savingsUnit" in patch) && !("downPaymentPct" in patch);
-    const pieChanged = "downPaymentPct" in patch && !("savingsAmount" in patch);
-
-    if (savingsChanged) {
-      const amount = patch.savingsAmount ?? current.savingsAmount;
-      const unit = patch.savingsUnit ?? current.savingsUnit;
-
-      if (amount != null && amount > 0) {
-        const savingsUF = unit === "UF" ? amount : amount / current.ufValueCLP;
-        const rawPct = (savingsUF / (maxLoanUF + savingsUF)) * 100;
-        const clamped = Math.max(10, Math.min(40, Math.round(rawPct / 5) * 5));
-        return { ...patch, downPaymentPct: clamped };
-      }
-    }
-
-    if (pieChanged) {
-      const newPie = patch.downPaymentPct ?? current.downPaymentPct;
-      const newMaxPropertyUF = maxLoanUF / (1 - newPie / 100);
-      const impliedSavingsCLP = Math.round(newMaxPropertyUF * (newPie / 100) * current.ufValueCLP);
-      return { ...patch, savingsAmount: impliedSavingsCLP, savingsUnit: "CLP" };
-    }
-
-    return patch;
-  }
-
   function handleChange(patch: Partial<ScenarioInput>) {
     let nextPatch = patch;
 
@@ -215,7 +194,7 @@ export function App() {
     }
 
     const presetAwarePatch = applyPresetForSelectedBank(scenario, nextPatch);
-    dispatch({ type: "UPDATE_SCENARIO", patch: syncSavingsPie(presetAwarePatch, scenario, output) });
+    dispatch({ type: "UPDATE_SCENARIO", patch: presetAwarePatch });
   }
 
   function handleManualUF(value: number) {
@@ -312,70 +291,132 @@ export function App() {
   }, [scenario, targetPropertyUF]);
 
   const tableRows = useMemo(() => {
-    const prices = Array.from({ length: 12 }, (_, index) => 1000 + index * 500);
+    const referenceUF = scenario.mode === "target_property" ? targetPropertyUF : output.realisticMaxPropertyUF ?? 0;
+    if (referenceUF <= 0) return [];
+
+    const stepUF = referenceUF >= 10000 ? Math.max(500, Math.round(referenceUF / 10 / 500) * 500) : 500;
+    const startUF = Math.max(500, Math.floor(referenceUF / stepUF) * stepUF - stepUF * 4);
+    const prices = Array.from({ length: 9 }, (_, index) => startUF + index * stepUF);
+
     return generateSensitivityTable(scenario, prices);
-  }, [scenario]);
+  }, [scenario, output.realisticMaxPropertyUF, targetPropertyUF]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="app-shell flex min-h-screen flex-col">
       <UFStatusBar metadata={ufMetadata} loading={ufLoading} error={ufError} onManualOverride={handleManualUF} />
 
-      <header className="border-b border-slate-200 bg-white px-4 py-4">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      <header className="hero-shell overflow-hidden px-4 pb-6 pt-5 text-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Simulador Hipotecario Chile</h1>
-              <p className="mt-0.5 text-sm text-slate-500">Simulador chileno de capacidad hipotecaria en UF</p>
+              <p className="text-sm font-semibold tracking-tight text-white">
+                CompraCasa <span className="font-normal text-cyan-50/65">· Planifica tu hipotecario con claridad</span>
+              </p>
             </div>
             <button
               type="button"
               onClick={handleCopyScenario}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               Compartir escenario
             </button>
           </div>
-          <div className="mt-4">
+
+          <div className="mt-6 max-w-3xl">
+            <div className="max-w-2xl">
+              <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Entiende qué casa puedes comprar y qué necesita tu objetivo.
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-5 text-cyan-50/75">
+                Ajusta precio, pie, plazo y tasa para entender tu dividendo y el ingreso necesario.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6">
             <ModeSelector mode={scenario.mode} onChange={(mode) => handleChange({ mode })} />
           </div>
         </div>
       </header>
 
-      <div className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-4">
-          <InputPanel scenario={scenario} onChange={handleChange} />
-        </div>
-      </div>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 lg:py-8">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(320px,360px)_minmax(0,1fr)]">
+          <aside className="surface-card rounded-3xl p-4 sm:p-5 lg:sticky lg:top-5">
+            <div className="mb-5 border-b border-slate-100 pb-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Tus datos</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+                Configura tu escenario
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                Usa solo lo que sabes hoy. Puedes ajustar los supuestos después.
+              </p>
+            </div>
+            <InputPanel
+              scenario={scenario}
+              onChange={handleChange}
+              loanAmountUF={output.loanAmountUF}
+              calculatedCaePct={calculatedManualCaePct}
+            />
+          </aside>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6">
-        {!hasValidInputs ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-            {emptyStateCopy}
-          </div>
-        ) : (
-          <>
-            <ResultCards output={output} input={scenario} status={status} />
-            <ErrorBoundary>
-              <SensitivityPanel
-                key={scenario.mode}
-                termMaxData={termMaxData}
-                targetTermData={targetTermData}
-                rateMaxData={rateMaxData}
-                maxPropertyByIncomeUF={output.maxPropertyByIncomeUF}
-                rateData={rateData}
-                pieRateData={pieRateData}
-                targetPropertyUF={targetPropertyUF}
-                tableRows={tableRows}
-                input={scenario}
-                highlightPropertyUF={output.realisticMaxPropertyUF ?? output.propertyPriceUF}
-              />
-            </ErrorBoundary>
-          </>
-        )}
+          <section className="min-w-0">
+            {!hasValidInputs ? (
+              <div className="surface-card rounded-3xl p-8 text-center sm:p-12">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-700">⌂</div>
+                <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-500">{emptyStateCopy}</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Tu respuesta</p>
+                    <p className="mt-1 text-sm text-slate-500">El número que importa para tu decisión hoy.</p>
+                  </div>
+                  <span className="hidden rounded-full bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm sm:inline-flex">
+                    Actualizado al cambiar tus datos
+                  </span>
+                </div>
+                <ResultCards output={output} input={scenario} status={status} />
+                <div className="mt-6">
+                  <ErrorBoundary>
+                    <SensitivityPanel
+                      key={scenario.mode}
+                      termMaxData={termMaxData}
+                      targetTermData={targetTermData}
+                      rateMaxData={rateMaxData}
+                      maxPropertyByIncomeUF={output.maxPropertyByIncomeUF}
+                      rateData={rateData}
+                      pieRateData={pieRateData}
+                      targetPropertyUF={targetPropertyUF}
+                      tableRows={tableRows}
+                      input={scenario}
+                      highlightPropertyUF={output.realisticMaxPropertyUF ?? output.propertyPriceUF}
+                    />
+                  </ErrorBoundary>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
 
         <GlossarySection />
         <DisclaimerSection />
       </main>
+
+      <footer className="border-t border-slate-200/80 bg-white/40 px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 text-[11px] text-slate-400">
+          <span>Hecho por Joaquín</span>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://www.linkedin.com/in/joaquinhc/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-slate-600 hover:underline"
+          >
+            LinkedIn
+          </a>
+        </div>
+      </footer>
 
       {copyToast && (
         <div className="fixed bottom-4 right-4 max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-lg">

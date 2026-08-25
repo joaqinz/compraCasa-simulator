@@ -58,10 +58,5 @@
     "id": "plazo",
     "term": "Plazo del crédito",
     "definition": "Cantidad de años en que pagarás el crédito hipotecario. Un plazo más largo baja el dividendo mensual, pero aumenta los intereses totales pagados."
-  },
-  {
-    "id": "codeudor",
-    "term": "Co-deudor",
-    "definition": "Persona que presenta ingresos junto contigo y comparte la responsabilidad del crédito. Puede ayudar a mejorar la factibilidad si el banco acepta sumar ambos ingresos."
   }
 ]

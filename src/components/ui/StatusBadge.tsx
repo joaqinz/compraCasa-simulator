@@ -12,7 +12,7 @@ const config = {
     icon: "OK",
   },
   yellow: {
-    label: "Ajustado",
+    label: "Justo",
     bg: "bg-amber-100",
     text: "text-amber-800",
     border: "border-amber-300",
@@ -24,6 +24,13 @@ const config = {
     text: "text-red-800",
     border: "border-red-300",
     icon: "X",
+  },
+  neutral: {
+    label: "Referencia",
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+    border: "border-slate-300",
+    icon: "–",
   },
 } as const;
 
