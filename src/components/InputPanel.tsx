@@ -74,7 +74,7 @@ export function InputPanel({ scenario, onChange, loanAmountUF, calculatedCaePct 
 
         <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
           <span id="term-label" className="text-sm font-medium text-slate-700">
-            Plazo
+            Plazo (años)
           </span>
           <div className="grid grid-cols-4 gap-1 rounded-lg border border-slate-300 bg-slate-50 p-0.5" role="group" aria-labelledby="term-label">
             {TERM_OPTIONS.map((term, index) => (
@@ -84,15 +84,16 @@ export function InputPanel({ scenario, onChange, loanAmountUF, calculatedCaePct 
                   termButtonRefs.current[index] = element;
                 }}
                 type="button"
+                aria-label={`${term} años`}
                 aria-pressed={scenario.termYears === term}
                 onClick={() => onChange({ termYears: term })}
                 onKeyDown={(event) => handleTermKeyDown(index, event)}
                 className={clsx(
-                  "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400",
+                  "whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400",
                   scenario.termYears === term ? "bg-teal-700 text-white shadow-sm" : "text-slate-600 hover:bg-white"
                 )}
               >
-                {term} años
+                {term}
               </button>
             ))}
           </div>
