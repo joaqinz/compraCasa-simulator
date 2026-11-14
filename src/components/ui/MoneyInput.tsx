@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { MoneyUnit } from "@/types/finance";
 import { Tooltip } from "./Tooltip";
 
@@ -44,6 +44,7 @@ export function MoneyInput({
 }: Props) {
   const [display, setDisplay] = useState(value != null ? formatDisplay(value, unit) : "");
   const focusedRef = useRef(false);
+  const inputId = useId();
 
   useEffect(() => {
     if (!focusedRef.current) {
@@ -98,15 +99,16 @@ export function MoneyInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="flex items-center text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="flex items-center text-sm font-medium text-slate-700">
         {label}
         {tooltipTermId && <Tooltip termId={tooltipTermId} />}
       </label>
       <div className="flex overflow-hidden rounded-lg border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500">
         <input
+          id={inputId}
           type="text"
           inputMode={unit === "CLP" ? "numeric" : "decimal"}
-          className="min-w-0 flex-1 bg-white px-3 py-2 text-sm focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-w-0 flex-1 bg-white px-3 py-2 text-sm focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
           value={display}
           onChange={handleChange}
           onFocus={handleFocus}
@@ -115,7 +117,8 @@ export function MoneyInput({
           disabled={disabled}
         />
         <select
-          className="cursor-pointer border-l border-slate-300 bg-slate-50 px-2 py-2 text-sm focus:outline-none"
+          aria-label={`Unidad de ${label}`}
+          className="cursor-pointer border-l border-slate-300 bg-slate-50 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
           value={unit}
           onChange={(event) => handleUnitChange(event.target.value as MoneyUnit)}
           disabled={disabled}

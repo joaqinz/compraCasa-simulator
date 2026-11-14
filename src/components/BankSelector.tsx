@@ -14,6 +14,7 @@ function parseDecimal(text: string) {
 }
 
 type ManualNumberInputProps = {
+  ariaLabel: string;
   value: number;
   onValueChange: (value: number) => void;
   step?: string;
@@ -23,6 +24,7 @@ type ManualNumberInputProps = {
 };
 
 function ManualNumberInput({
+  ariaLabel,
   value,
   onValueChange,
   step,
@@ -73,6 +75,7 @@ function ManualNumberInput({
     <input
       type="text"
       inputMode="decimal"
+      aria-label={ariaLabel}
       data-step={step}
       className={className}
       value={display}
@@ -179,13 +182,11 @@ export function BankSelector({
     <section className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
       <div className="grid gap-4">
         <div className="min-w-0">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-sm font-medium text-slate-700">Banco / Escenario</label>
-            <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-              CAE asc.
-            </span>
-          </div>
+          <label htmlFor="bank-select" className="mb-1 block text-sm font-medium text-slate-700">
+            Banco
+          </label>
           <select
+            id="bank-select"
             className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedBankId}
             onChange={(event) => handleBankChange(event.target.value)}
@@ -196,13 +197,12 @@ export function BankSelector({
                 {term.termYears !== termYears ? ` (${term.termYears} años)` : ""}
               </option>
             ))}
-            <option value="manual">Ingreso manual</option>
+            <option value="manual">Otra tasa (ingresar a mano)</option>
           </select>
-          <p className="mt-1 text-[11px] text-slate-400">Ordenado por CAE para el plazo seleccionado.</p>
-          <p className="mt-2 rounded-lg bg-white px-2.5 py-2 text-[11px] leading-4 text-slate-500">
+          <p className="mt-1 text-[11px] leading-4 text-slate-500">
             {isManual
-              ? "CAE estimada con tasa anual + seguro mensual fijo. No incluye gastos que no hayas ingresado."
-              : `Dividendo: tasa anual + seguro. CAE: comparación de costo total. Pie mínimo estimado: ${100 - maxFinancingPct}%.`}
+              ? "Ingresa la tasa y el seguro que te cotizó tu banco."
+              : `Bancos ordenados del más barato al más caro según CAE (costo total del crédito). Pie mínimo: ${100 - maxFinancingPct}%.`}
           </p>
         </div>
 
@@ -215,6 +215,7 @@ export function BankSelector({
                 step="0.01"
                 min="0"
                 max="30"
+                ariaLabel="Tasa anual (%)"
                 className={metricInputClass}
                 value={annualRatePct}
                 onValueChange={(value) => onChange({ annualRatePct: value })}
@@ -237,6 +238,7 @@ export function BankSelector({
               <ManualNumberInput
                 step="0.01"
                 min="0"
+                ariaLabel="Seguro mensual (UF)"
                 className={metricInputClass}
                 value={monthlyInsuranceUF}
                 onValueChange={(value) => onChange({ monthlyInsuranceUF: value })}
@@ -252,6 +254,7 @@ export function BankSelector({
                 step="1"
                 min="50"
                 max="100"
+                ariaLabel="Financiamiento máximo (%)"
                 className={metricInputClass}
                 value={maxFinancingPct}
                 onValueChange={(value) =>
@@ -263,11 +266,9 @@ export function BankSelector({
             )}
           </Metric>
 
-          {!isManual && selectedBank && (
-            <Metric label="Plazos con dato CMF">
-              <span className={termAvailable ? "truncate" : "truncate text-amber-700"}>
-                {selectedBank.availableTermsYears.join(", ")} años
-              </span>
+          {!isManual && selectedBank && !termAvailable && (
+            <Metric label="Plazos con datos">
+              <span className="truncate text-amber-800">{selectedBank.availableTermsYears.join(", ")} años</span>
             </Metric>
           )}
           </div>
@@ -286,7 +287,7 @@ export function BankSelector({
             </div>
           )}
           {isManual && calculatedCaePct != null && loanAmountUF != null && (
-            <p className="mt-2 text-[10px] leading-4 text-slate-400">
+            <p className="mt-2 text-[11px] leading-4 text-slate-500">
               CAE estimada sobre un crédito de {formatUF(loanAmountUF, 0)} con seguro mensual fijo. Es referencial, no una CAE bancaria.
             </p>
           )}
@@ -294,21 +295,21 @@ export function BankSelector({
       </div>
 
       {!isManual && selectedBank && selectedTermPreset && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-400">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
           {selectedTermPreset.termYears === termYears ? (
             <span>
-              CMF {selectedTermPreset.termYears} años · {selectedTermPreset.lastUpdated}
+              Tasas CMF {selectedTermPreset.termYears} años · {selectedTermPreset.lastUpdated}
             </span>
           ) : (
             <span>
-              CMF sin escenario {termYears} años; usando {selectedTermPreset.termYears} años
+              La CMF no publica {termYears} años para este banco; usamos la tasa a {selectedTermPreset.termYears} años
             </span>
           )}
           <a
             href={selectedTermPreset.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-slate-600"
+            className="underline hover:text-slate-700"
           >
             Fuente
           </a>
@@ -318,13 +319,10 @@ export function BankSelector({
 
       <div className="mt-4 grid gap-3 border-t border-slate-200/80 pt-4">
         <div>
-          <label className="flex items-center text-xs font-medium text-slate-600">
-            Carga financiera máxima <Tooltip termId="carga-financiera" />
+          <label htmlFor="carga-slider" className="flex items-center text-xs font-medium text-slate-700">
+            ¿Cuánto de tu sueldo puede ir al dividendo? <Tooltip termId="carga-financiera" />
           </label>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Actual: <span className="font-semibold text-slate-800">{maxDividendIncomeRatioPct}%</span> del ingreso neto.
-            Rango típico: 20%-30%.
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">Los bancos suelen exigir un máximo de 25%. Rango típico: 20%–30%.</p>
         </div>
 
         <div className="relative min-w-0">
@@ -339,6 +337,7 @@ export function BankSelector({
             <div className="absolute h-full rounded-full bg-blue-200/70" style={{ width: `${sliderProgressPct}%` }} />
           </div>
           <input
+            id="carga-slider"
             type="range"
             min="15"
             max="40"
@@ -346,14 +345,14 @@ export function BankSelector({
             className="relative z-10 w-full accent-blue-600"
             value={maxDividendIncomeRatioPct}
             onChange={(event) => onChange({ maxDividendIncomeRatioPct: parseInt(event.target.value, 10) })}
-            aria-label="Carga financiera máxima"
+            aria-valuetext={`${maxDividendIncomeRatioPct}% del ingreso`}
           />
           <div className="relative mt-1 h-6 text-[11px] text-slate-500">
             <span
               className="absolute top-0 whitespace-nowrap rounded border border-blue-100 bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700"
               style={{ left: `${sliderProgressPct}%`, transform: sliderValueLabelTransform }}
             >
-              Actual {maxDividendIncomeRatioPct}%
+              {maxDividendIncomeRatioPct}%
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-500">
@@ -367,8 +366,8 @@ export function BankSelector({
           <span className="mt-0.5 text-sm" aria-hidden="true">◆</span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-amber-900">¿Quieres simular con FOGAES?</p>
-            <p className="mt-1 text-[11px] leading-4 text-amber-900/75">
-              Usa Ingreso manual, 90% de financiamiento (10% de pie) y la tasa cotizada por tu banco.
+            <p className="mt-1 text-[11px] leading-4 text-amber-900/85">
+              Para viviendas nuevas de primera compra: usa “Otra tasa”, 90% de financiamiento (10% de pie) y la tasa que te cotice tu banco.
             </p>
             <button
               type="button"
@@ -377,7 +376,7 @@ export function BankSelector({
             >
               Configurar escenario FOGAES
             </button>
-            <p className="mt-2 text-[10px] leading-4 text-amber-900/65">
+            <p className="mt-2 text-[11px] leading-4 text-amber-900/80">
               Parámetros referenciales; el banco confirma la tasa y elegibilidad. <a href="https://fogaes.cl/sitio/requisitos/" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-950">Ver requisitos</a>.
             </p>
           </div>

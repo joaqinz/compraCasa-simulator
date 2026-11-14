@@ -141,22 +141,22 @@ export function PieDownPaymentPanel({
                 >
                   <td className="px-3 py-2 text-right font-semibold">
                     {label}
-                    {row.isCurrent && <span className="ml-1.5 text-[10px] font-medium text-blue-600">actual</span>}
+                    {row.isCurrent && <span className="ml-1.5 text-[11px] font-medium text-blue-600">actual</span>}
                     {isFirstFeasible && (
-                      <span className="ml-1.5 text-[10px] font-medium text-emerald-600">mín. factible</span>
+                      <span className="ml-1.5 text-[11px] font-medium text-emerald-600">mín. factible</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div>{formatUF(downPaymentUF, 0)}</div>
-                    <div className="text-[10px] text-slate-400">{formatCLP(downPaymentUF * ufValueCLP)}</div>
+                    <div className="text-[11px] text-slate-500">{formatCLP(downPaymentUF * ufValueCLP)}</div>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div>{formatUF(representative.dividendUF, 2)}</div>
-                    <div className="text-[10px] text-slate-400">{formatCLP(representative.dividendUF * ufValueCLP)}</div>
+                    <div className="text-[11px] text-slate-500">{formatCLP(representative.dividendUF * ufValueCLP)}</div>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div>{formatUF(representative.requiredIncomeUF, 2)}</div>
-                    <div className="text-[10px] text-slate-400">{formatCLP(representative.requiredIncomeUF * ufValueCLP)}</div>
+                    <div className="text-[11px] text-slate-500">{formatCLP(representative.requiredIncomeUF * ufValueCLP)}</div>
                   </td>
                   {hasIncome && (
                     <td className="px-3 py-2 text-center">
@@ -166,7 +166,9 @@ export function PieDownPaymentPanel({
                         <div>
                           <span className="font-bold text-red-500">No</span>
                           {incomeGap > 0 && (
-                            <div className="mt-0.5 text-[10px] text-red-400">+{formatCLP(incomeGap * ufValueCLP)}</div>
+                            <div className="mt-0.5 whitespace-nowrap text-[11px] text-red-700">
+                              Faltan {formatCLP(incomeGap * ufValueCLP)}/mes de ingreso
+                            </div>
                           )}
                         </div>
                       )}
@@ -180,7 +182,7 @@ export function PieDownPaymentPanel({
       </div>
 
       {hasCollapsedRows && (
-        <p className="text-[11px] text-slate-400">
+        <p className="text-[11px] text-slate-500">
           ¹ El banco exige {bankMinPiePct}% pie mínimo; valores debajo se ajustan automáticamente.
         </p>
       )}

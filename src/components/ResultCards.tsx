@@ -80,7 +80,7 @@ function getIncomeUF(input: ScenarioInput) {
 }
 
 function getSavingsUF(input: ScenarioInput) {
-  if (input.savingsAmount == null) return undefined;
+  if (input.savingsAmount == null) return input.mode === "income" ? 0 : undefined;
   return input.savingsUnit === "CLP" ? input.savingsAmount / input.ufValueCLP : input.savingsAmount;
 }
 
@@ -98,6 +98,18 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
     const maxLoan = output.maxLoanByIncomeUF;
     const savingsUF = getSavingsUF(input);
 
+    if ((savingsUF ?? 0) <= 0 && maxLoan != null && maxLoan > 0) {
+      const minPiePct = 100 - input.maxFinancingPct;
+      const reachablePropertyUF = maxLoan / (input.maxFinancingPct / 100);
+      const pieNeededUF = reachablePropertyUF * (minPiePct / 100 + (input.reserveClosingCosts ? 0.02 : 0));
+      return {
+        label: "tu pie",
+        title: "Necesitas ahorro para el pie",
+        body: `Los bancos financian máximo ${input.maxFinancingPct}% del valor, así que sin ahorros no puedes cubrir el pie. Tu ingreso sí soporta un crédito de hasta ${formatUF(maxLoan, 0)}.`,
+        action: `Con unos ${formatUF(pieNeededUF, 0)} (${formatCLP(pieNeededUF * input.ufValueCLP)}) de ahorro podrías llegar a una propiedad de ${formatUF(reachablePropertyUF, 0)}.`,
+      };
+    }
+
     if (isBalanced) {
       return {
         label: "tu ingreso y tu pie",
@@ -111,7 +123,7 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
       return {
         label: "tu ingreso",
         title: "Restricción activa: tu ingreso",
-        body: `Tu ingreso soporta un crédito de hasta ${formatUF(maxLoan, 0)}. Sumando todos tus ahorros como pie (${formatUF(savingsUF, 0)}) llegas a ${formatUF(output.realisticMaxPropertyUF ?? 0, 0)}. El pie mínimo del banco recién te limitaría en ${formatUF(bySavings, 0)}.`,
+        body: `Tu ingreso soporta un crédito de hasta ${formatUF(maxLoan, 0)}. Sumando tus ahorros como pie (${formatUF(output.downPaymentUF ?? savingsUF, 0)}) llegas a ${formatUF(output.realisticMaxPropertyUF ?? 0, 0)}. El pie mínimo del banco recién te limitaría en ${formatUF(bySavings, 0)}.`,
         action: "Para aumentar tu propiedad máxima: más ingreso, más ahorro, un plazo mayor o una tasa menor.",
       };
     }
@@ -163,7 +175,10 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
   if (output.bindingConstraint === "income") {
     const pieToFit = output.downPaymentToFitIncomeUF;
     const savingsUF = getSavingsUF(input);
-    const morePieFits = pieToFit != null && savingsUF != null && savingsUF >= pieToFit - AFFORDABILITY_TOLERANCE_UF;
+    const morePieFits =
+      pieToFit != null &&
+      savingsUF != null &&
+      savingsUF >= pieToFit + (output.closingCostsUF ?? 0) - AFFORDABILITY_TOLERANCE_UF;
     return {
       label: "tu ingreso",
       title: "Restricción activa: tu ingreso",
@@ -214,21 +229,30 @@ export function ResultCards({ output, input, status }: Props) {
   const incomeUF = getIncomeUF(input);
   const savingsUF = getSavingsUF(input);
   const constraintInsight = useMemo(() => getConstraintInsight(output, input), [input, output]);
+  const isTarget = input.mode === "target_property";
+  const headlineUF = isTarget ? output.propertyPriceUF : output.realisticMaxPropertyUF;
 
   return (
     <div className="flex flex-col gap-4">
-      {(output.realisticMaxPropertyUF != null || output.propertyPriceUF != null) && (
-        <div className="result-hero rounded-3xl p-6 sm:p-7">
+      {headlineUF != null && (
+        <div id="resultado" className="result-hero scroll-mt-4 rounded-3xl p-6 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium text-slate-500">
-                {input.mode === "target_property" ? "Propiedad objetivo" : "Tu propiedad máxima estimada"}
+                {isTarget ? "Propiedad objetivo" : "Tu propiedad máxima estimada"}
               </p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                {formatPair(output.realisticMaxPropertyUF ?? output.propertyPriceUF ?? 0, uf)}
+              <p className="font-display mt-1 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                {formatPair(headlineUF ?? 0, uf)}
               </p>
+              {isTarget && output.realisticMaxPropertyUF != null && incomeUF != null && (
+                <p className="mt-1 text-sm text-slate-600">
+                  Con tus datos actuales podrías llegar a{" "}
+                  <span className="font-semibold text-slate-800">{formatPair(output.realisticMaxPropertyUF, uf)}</span>.
+                </p>
+              )}
             </div>
-            <StatusBadge status={status} large />
+            {/* In income mode the result is the maximum by definition, so a status badge adds nothing. */}
+            {isTarget && <StatusBadge status={status} large />}
           </div>
 
           {constraintInsight && (
@@ -239,11 +263,27 @@ export function ResultCards({ output, input, status }: Props) {
             </div>
           )}
 
-          {input.mode === "income" && savingsUF != null && output.realisticMaxPropertyUF != null && (
-            <p className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-900">
-              <span aria-hidden="true">!</span>
-              Usa todo tu ahorro como pie. Considera reservar para gastos operacionales (aprox. 1%–3%:{" "}
-              {formatUF(output.realisticMaxPropertyUF * 0.01, 0)}–{formatUF(output.realisticMaxPropertyUF * 0.03, 0)}).
+          {headlineUF != null && headlineUF > 0 && (
+            <p
+              className={clsx(
+                "mt-3 rounded-xl border px-3 py-2 text-xs leading-5",
+                input.reserveClosingCosts
+                  ? "border-slate-200 bg-white/70 text-slate-600"
+                  : "border-amber-200 bg-amber-50 text-amber-900"
+              )}
+            >
+              {input.reserveClosingCosts ? (
+                <>
+                  Reservamos <span className="font-semibold">{formatPair(output.closingCostsUF ?? 0, uf)}</span> (2%) de tus
+                  ahorros para gastos operacionales: notaría, Conservador de Bienes Raíces, tasación, estudio de títulos e
+                  impuesto al mutuo.
+                </>
+              ) : (
+                <>
+                  Este cálculo no reserva nada para gastos operacionales (notaría, CBR, tasación, impuesto al mutuo). Suelen
+                  costar 1%–3% del valor: {formatUF(headlineUF * 0.01, 0)}–{formatUF(headlineUF * 0.03, 0)}.
+                </>
+              )}
             </p>
           )}
         </div>
@@ -254,16 +294,16 @@ export function ResultCards({ output, input, status }: Props) {
           <Card
             title={input.mode === "income" ? "Dividendo de esta propiedad" : "Dividendo mensual estimado"}
             value={formatPair(output.fullMonthlyDividendUF, uf)}
-            sub="Incluye seguros"
+            sub={`Incluye seguros · total en ${input.termYears} años: ${formatPair(output.fullMonthlyDividendUF * input.termYears * 12, uf)}`}
             tooltipId="dividendo"
           />
         )}
 
         {input.mode === "income" && output.fullMonthlyDividendUF != null && incomeUF != null && incomeUF > 0 && (
           <Card
-            title="Uso de tu ingreso"
-            value={`${formatPctValue((output.fullMonthlyDividendUF / incomeUF) * 100)} de tu ingreso`}
-            sub={`Carga máxima configurada: ${input.maxDividendIncomeRatioPct}%`}
+            title="Te queda cada mes"
+            value={formatCLP((incomeUF - output.fullMonthlyDividendUF) * uf)}
+            sub={`Después del dividendo (${formatPctValue((output.fullMonthlyDividendUF / incomeUF) * 100)} de tu ingreso)`}
             tooltipId="carga-financiera"
           />
         )}
@@ -290,16 +330,16 @@ export function ResultCards({ output, input, status }: Props) {
             title={input.mode === "income" ? "Pie que aportas" : "Pie requerido"}
             value={formatPair(output.downPaymentUF, uf)}
             sub={
-              input.mode === "income" && output.minDownPaymentUF != null && savingsUF != null
-                ? `Todos tus ahorros · mínimo del banco: ${formatUF(output.minDownPaymentUF, 0)}`
+              input.mode === "income" && output.minDownPaymentUF != null
+                ? `${input.reserveClosingCosts ? "Tus ahorros menos la reserva" : "Todos tus ahorros"} · mínimo del banco: ${formatUF(output.minDownPaymentUF, 0)}`
                 : undefined
             }
             tooltipId="pie"
             highlight={
               savingsUF != null
-                ? savingsUF >= output.downPaymentUF
+                ? savingsUF >= output.downPaymentUF + (output.closingCostsUF ?? 0)
                   ? "positive"
-                  : savingsUF >= output.downPaymentUF - AFFORDABILITY_TOLERANCE_UF
+                  : savingsUF >= output.downPaymentUF + (output.closingCostsUF ?? 0) - AFFORDABILITY_TOLERANCE_UF
                     ? "neutral"
                     : "negative"
                 : undefined
@@ -308,7 +348,7 @@ export function ResultCards({ output, input, status }: Props) {
         )}
 
         {output.loanAmountUF != null && (
-          <Card title="Monto del crédito" value={formatPair(output.loanAmountUF, uf)} tooltipId="tasa" />
+          <Card title="Monto del crédito" value={formatPair(output.loanAmountUF, uf)} tooltipId="credito" />
         )}
       </div>
 
@@ -329,7 +369,7 @@ export function ResultCards({ output, input, status }: Props) {
               title="Brecha de ahorros"
               value={`+${formatPair(output.savingsGapUF ?? 0, uf)}`}
               highlight="negative"
-              sub="Ahorro adicional necesario"
+              sub={input.reserveClosingCosts ? "Ahorro adicional necesario (incluye gastos operacionales)" : "Ahorro adicional necesario"}
             />
           )}
         </div>
@@ -359,13 +399,15 @@ export function ResultCards({ output, input, status }: Props) {
         <button
           type="button"
           onClick={() => setShowFormulaDetails((value) => !value)}
+          aria-expanded={showFormulaDetails}
+          aria-controls="formula-details"
           className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <span>Cómo se calcula</span>
-          <span className="text-xs text-slate-400">{showFormulaDetails ? "Ocultar" : "Ver fórmulas"}</span>
+          <span className="text-xs text-slate-500">{showFormulaDetails ? "Ocultar" : "Ver fórmulas"}</span>
         </button>
         {showFormulaDetails && (
-          <div className="border-t border-slate-100 px-4 py-3 text-xs leading-relaxed text-slate-600">
+          <div id="formula-details" className="border-t border-slate-100 px-4 py-3 text-xs leading-relaxed text-slate-600">
             <p>
               Dividendo base: <code>D = P · [r(1+r)^n] / [(1+r)^n − 1]</code>, donde <code>P</code> es el crédito,
               <code>r</code> la tasa mensual y <code>n</code> los meses.
@@ -378,8 +420,9 @@ export function ResultCards({ output, input, status }: Props) {
             </p>
             {input.mode === "income" && (
               <p className="mt-2">
-                Propiedad máxima: <code>mín(crédito máx. por ingreso + ahorros, ahorros ÷ pie mínimo)</code>. Todos tus
-                ahorros se usan como pie.
+                Propiedad máxima: <code>mín((crédito máx. por ingreso + ahorros) ÷ (1 + g), ahorros ÷ (pie mínimo + g))</code>,
+                donde <code>g</code> es la reserva para gastos operacionales ({input.reserveClosingCosts ? "2%" : "0%"}). El
+                resto de tus ahorros va al pie.
               </p>
             )}
           </div>

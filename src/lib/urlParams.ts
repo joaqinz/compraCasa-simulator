@@ -40,6 +40,7 @@ export function encodeScenarioToURL(input: ScenarioInput): string {
   p.set("mf", String(input.maxFinancingPct));
   p.set("du", input.displayUnit);
   p.set("bank", input.selectedBankId);
+  p.set("gc", input.reserveClosingCosts ? "1" : "0");
   return `${window.location.origin}${window.location.pathname}?${p.toString()}`;
 }
 
@@ -88,6 +89,9 @@ export function decodeScenarioFromURL(search: string): Partial<ScenarioInput> {
 
   const bank = p.get("bank");
   if (bank) partial.selectedBankId = bank;
+
+  const gc = p.get("gc");
+  if (gc === "0" || gc === "1") partial.reserveClosingCosts = gc === "1";
 
   partial.ufValueCLP = DEFAULT_UF;
 

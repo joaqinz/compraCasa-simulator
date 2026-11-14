@@ -55,7 +55,7 @@ export function PieRateSensitivityTable({ data, ufValueCLP, hasIncome }: Props) 
                   return (
                     <td key={r} className={clsx("p-2 border border-slate-200 text-center", cellColor)}>
                       <div className="font-semibold">{formatBoth(pt.dividendUF, ufValueCLP)}</div>
-                      <div className="text-[10px] opacity-70 mt-0.5">req. {formatUF(pt.requiredIncomeUF, 2)} UF</div>
+                      <div className="text-[11px] opacity-70 mt-0.5">req. {formatUF(pt.requiredIncomeUF, 2)} UF</div>
                     </td>
                   );
                 })}

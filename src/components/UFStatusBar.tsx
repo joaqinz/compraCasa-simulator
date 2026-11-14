@@ -23,6 +23,12 @@ function parseMetadataDate(dateString: string | undefined) {
   return null;
 }
 
+function formatChileanDate(dateString: string | undefined) {
+  const parsed = parseMetadataDate(dateString);
+  if (!parsed) return dateString ?? "";
+  return parsed.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export function UFStatusBar({ metadata, loading, error, onManualOverride }: Props) {
   const [manualInput, setManualInput] = useState("");
   const [showManual, setShowManual] = useState(false);
@@ -65,8 +71,8 @@ export function UFStatusBar({ metadata, loading, error, onManualOverride }: Prop
       {!loading && metadata && !error && (
         <span className="flex items-center gap-1">
           <span className={freshness.stale ? "text-amber-400" : "text-emerald-400"}>●</span>
-          UF {metadata.date}: <strong className="ml-1 text-white">${ufFormatted}</strong>
-          <span className="ml-1 text-slate-400">
+          UF {freshness.daysOld === 0 ? "hoy" : "del"} ({formatChileanDate(metadata.date)}): <strong className="ml-1 text-white">${ufFormatted}</strong>
+          <span className="ml-1 text-slate-300">
             (Fuente:{" "}
             {metadata.source === "SII"
               ? "SII"
@@ -79,7 +85,7 @@ export function UFStatusBar({ metadata, loading, error, onManualOverride }: Prop
           </span>
           {freshness.stale && (
             <span className="ml-1 text-amber-300">
-              valor del {metadata.date}, podría estar desactualizado
+              podría estar desactualizado
             </span>
           )}
         </span>
@@ -92,7 +98,7 @@ export function UFStatusBar({ metadata, loading, error, onManualOverride }: Prop
       {!showManual ? (
         <button
           type="button"
-          className="text-slate-400 underline hover:text-white"
+          className="text-slate-300 underline hover:text-white"
           onClick={() => setShowManual(true)}
         >
           {metadata?.source === "Manual" ? "Cambiar UF" : "Ingresar UF manualmente"}
@@ -102,6 +108,7 @@ export function UFStatusBar({ metadata, loading, error, onManualOverride }: Prop
           <input
             type="text"
             inputMode="decimal"
+            aria-label="Valor UF en pesos"
             className="w-28 rounded border border-slate-500 bg-slate-700 px-2 py-1 text-xs text-white focus:border-blue-400 focus:outline-none"
             placeholder="ej. 40160,14"
             value={manualInput}
@@ -111,7 +118,7 @@ export function UFStatusBar({ metadata, loading, error, onManualOverride }: Prop
           <button type="submit" className="text-xs text-blue-400 hover:text-blue-300">
             Aplicar
           </button>
-          <button type="button" className="text-xs text-slate-400 hover:text-white" onClick={() => setShowManual(false)}>
+          <button type="button" className="text-xs text-slate-300 hover:text-white" onClick={() => setShowManual(false)}>
             Cancelar
           </button>
         </form>

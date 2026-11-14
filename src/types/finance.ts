@@ -33,6 +33,8 @@ export type ScenarioInput = {
 
   displayUnit: DisplayUnit;
   selectedBankId: string;
+  /** Reserve CLOSING_COST_RATIO of the price from savings for gastos operacionales */
+  reserveClosingCosts: boolean;
 };
 
 export type ScenarioOutput = {
@@ -40,6 +42,8 @@ export type ScenarioOutput = {
   downPaymentUF?: number;
   /** Minimum pie the bank/config requires for propertyPriceUF */
   minDownPaymentUF?: number;
+  /** Savings reserved for gastos operacionales */
+  closingCostsUF?: number;
   loanAmountUF?: number;
   /** Largest loan the income supports under the max carga financiera */
   maxLoanByIncomeUF?: number;
@@ -96,6 +100,7 @@ export type SensitivityRow = {
   propertyPriceUF: number;
   downPaymentPct: number;
   downPaymentUF: number;
+  closingCostsUF: number;
   loanAmountUF: number;
   fullDividendUF: number;
   requiredIncomeUF: number;

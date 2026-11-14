@@ -1,5 +1,5 @@
 import type { ScenarioInput, SensitivityRow, BindingConstraint } from "@/types/finance";
-import { AFFORDABILITY_TOLERANCE_UF, getEffectiveEquityRatio, runScenario } from "./affordability";
+import { AFFORDABILITY_TOLERANCE_UF, getClosingCostRatio, getEffectiveEquityRatio, runScenario } from "./affordability";
 import {
   calculateMonthlyPaymentUF,
   calculateFullDividendUF,
@@ -306,13 +306,17 @@ export function generateSensitivityTable(
   const savingsUF =
     baseInput.savingsAmount != null
       ? baseInput.savingsAmount / (baseInput.savingsUnit === "CLP" ? baseInput.ufValueCLP : 1)
-      : undefined;
+      : useAllSavingsAsPie ? 0 : undefined;
+  const closingRatio = getClosingCostRatio(baseInput);
 
   return propertyPrices.map((price) => {
     const minDp = calculateDownPaymentUF(price, effectiveEquityRatio * 100);
-    // Income mode: put all savings into the pie (never below the minimum), same as the headline result.
+    const closing = price * closingRatio;
+    // Income mode: put all savings (minus closing reserve) into the pie, never below the minimum.
     const dp =
-      useAllSavingsAsPie && savingsUF != null ? Math.min(price, Math.max(minDp, savingsUF)) : minDp;
+      useAllSavingsAsPie && savingsUF != null
+        ? Math.min(price, Math.max(minDp, savingsUF - closing))
+        : minDp;
     const loan = price - dp;
     const base = calculateMonthlyPaymentUF(loan, baseInput.annualRatePct, baseInput.termYears);
     const full = calculateFullDividendUF(base, baseInput.monthlyInsuranceUF);
@@ -322,12 +326,13 @@ export function generateSensitivityTable(
       propertyPriceUF: price,
       downPaymentPct: price > 0 ? (dp / price) * 100 : effectiveEquityRatio * 100,
       downPaymentUF: dp,
+      closingCostsUF: closing,
       loanAmountUF: loan,
       fullDividendUF: full,
       requiredIncomeUF: req,
       feasible:
         (incomeUF == null || incomeUF >= req - AFFORDABILITY_TOLERANCE_UF) &&
-        (savingsUF == null || savingsUF >= dp - AFFORDABILITY_TOLERANCE_UF),
+        (savingsUF == null || savingsUF >= dp + closing - AFFORDABILITY_TOLERANCE_UF),
     };
   });
 }

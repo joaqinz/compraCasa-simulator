@@ -17,6 +17,12 @@ import {
 const YELLOW_GAP_THRESHOLD = 0.10; // within 10% = yellow
 const GREEN_EXCESS_THRESHOLD = 0.05; // more than 5% headroom = green
 export const AFFORDABILITY_TOLERANCE_UF = 1;
+/** Share of the property price reserved for gastos operacionales when enabled */
+export const CLOSING_COST_RATIO = 0.02;
+
+export function getClosingCostRatio(input: Pick<ScenarioInput, "reserveClosingCosts">): number {
+  return input.reserveClosingCosts ? CLOSING_COST_RATIO : 0;
+}
 
 export function runScenario(input: ScenarioInput): ScenarioOutput {
   const {
@@ -37,9 +43,11 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
     ? toUF(netMonthlyIncomeAmount, netMonthlyIncomeUnit, ufValueCLP)
     : undefined;
 
+  // Income mode: empty savings means $0 saved (the bank's minimum pie then limits the result).
   const savingsUF = savingsAmount != null
     ? toUF(savingsAmount, savingsUnit, ufValueCLP)
-    : undefined;
+    : input.mode === "income" ? 0 : undefined;
+  const closingRatio = getClosingCostRatio(input);
 
   const effectiveEquityRatio = getEffectiveEquityRatio(input);
   const loanRatio = 1 - effectiveEquityRatio;
@@ -53,9 +61,9 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
       : 0;
   }
 
-  // Max property by savings: savings cover the minimum pie
-  const maxPropertyBySavingsUF = savingsUF != null && effectiveEquityRatio > 0
-    ? savingsUF / effectiveEquityRatio
+  // Max property by savings: savings cover the minimum pie + reserved closing costs
+  const maxPropertyBySavingsUF = savingsUF != null && effectiveEquityRatio + closingRatio > 0
+    ? savingsUF / (effectiveEquityRatio + closingRatio)
     : undefined;
 
   // Max property by income: max loan + every peso of savings used as pie.
@@ -63,7 +71,8 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
   let maxPropertyByIncomeUF: number | undefined;
   if (maxLoanByIncomeUF != null) {
     if (savingsUF != null) {
-      maxPropertyByIncomeUF = maxLoanByIncomeUF + savingsUF;
+      // P = loan + pie, pie = savings − closing·P  →  P = (loan + savings) / (1 + closing)
+      maxPropertyByIncomeUF = (maxLoanByIncomeUF + savingsUF) / (1 + closingRatio);
     } else if (loanRatio > 0) {
       maxPropertyByIncomeUF = maxLoanByIncomeUF / loanRatio;
     } else {
@@ -81,10 +90,11 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
     const propertyPriceUF = realisticMaxPropertyUF;
     let loanAmountUF: number | undefined;
     let downPaymentUF: number | undefined;
+    const closingCostsUF = propertyPriceUF != null ? propertyPriceUF * closingRatio : undefined;
     if (propertyPriceUF != null) {
-      // With savings, the whole saving goes to the pie (max property is always ≥ savings).
+      // All savings (minus the closing-cost reserve) go to the pie.
       loanAmountUF = savingsUF != null
-        ? Math.max(0, propertyPriceUF - savingsUF)
+        ? Math.max(0, propertyPriceUF - (savingsUF - (closingCostsUF ?? 0)))
         : propertyPriceUF * loanRatio;
       downPaymentUF = propertyPriceUF - loanAmountUF;
     }
@@ -102,6 +112,7 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
       propertyPriceUF,
       downPaymentUF,
       minDownPaymentUF: propertyPriceUF != null ? propertyPriceUF * effectiveEquityRatio : undefined,
+      closingCostsUF,
       loanAmountUF,
       baseMonthlyDividendUF,
       fullMonthlyDividendUF,
@@ -128,7 +139,8 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
   const requiredIncomeUF = calculateRequiredIncomeUF(fullMonthlyDividendUF, maxDividendIncomeRatioPct);
 
   const incomeGapUF = incomeUF != null ? requiredIncomeUF - incomeUF : undefined;
-  const savingsGapUF = savingsUF != null ? downPaymentUF - savingsUF : undefined;
+  const closingCostsUF = propertyPriceUF * closingRatio;
+  const savingsGapUF = savingsUF != null ? downPaymentUF + closingCostsUF - savingsUF : undefined;
 
   const incomeShort = incomeGapUF != null && incomeGapUF > AFFORDABILITY_TOLERANCE_UF;
   const savingsShort = savingsGapUF != null && savingsGapUF > AFFORDABILITY_TOLERANCE_UF;
@@ -153,6 +165,7 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
     propertyPriceUF,
     downPaymentUF,
     minDownPaymentUF: downPaymentUF,
+    closingCostsUF,
     loanAmountUF,
     baseMonthlyDividendUF,
     fullMonthlyDividendUF,

@@ -2,7 +2,7 @@ param(
     [string]$Message = ""
 )
 
-# ── 1. Require a commit message ───────────────────────────────────────────────
+# -- 1. Require a commit message -----------------------------------------------
 if (-not $Message) {
     $Message = Read-Host "Commit message"
     if (-not $Message) {
@@ -11,26 +11,30 @@ if (-not $Message) {
     }
 }
 
-# ── 2. Stage all changes ──────────────────────────────────────────────────────
+# -- 2. Stage all changes ------------------------------------------------------
 Write-Host "`n[1/3] Staging changes..." -ForegroundColor Cyan
 git add .
 if (-not $?) { Write-Host "git add failed." -ForegroundColor Red; exit 1 }
 
-# ── 3. Commit ─────────────────────────────────────────────────────────────────
+# -- 3. Commit -----------------------------------------------------------------
 Write-Host "[2/3] Committing: $Message" -ForegroundColor Cyan
 git commit -m $Message
-# Don't exit on no-op commit — may still need to push or deploy
+# Don't exit on no-op commit - may still need to push or deploy
 
-# ── 4. Push ───────────────────────────────────────────────────────────────────
+# -- 4. Push -------------------------------------------------------------------
 Write-Host "[3/3] Pushing to origin/main..." -ForegroundColor Cyan
 git push origin main
 
-# ── 5. Deploy via Netlify CLI (reliable, bypasses GitHub webhook) ─────────────
-Write-Host "`n[deploy] Running netlify deploy --prod..." -ForegroundColor Cyan
-netlify deploy --prod
+# -- 5. Build and deploy to Cloudflare Pages -----------------------------------
+Write-Host "`n[build] npm run build..." -ForegroundColor Cyan
+npm run build
+if (-not $?) { Write-Host "Build failed." -ForegroundColor Red; exit 1 }
+
+Write-Host "[deploy] wrangler pages deploy..." -ForegroundColor Cyan
+npx wrangler pages deploy dist --project-name compracasachile --branch main
 if ($?) {
-    Write-Host "`nDone. Site is live at https://compracasa-simulator.netlify.app" -ForegroundColor Green
+    Write-Host "`nDone. Site is live at https://compracasachile.pages.dev" -ForegroundColor Green
 } else {
-    Write-Host "Netlify deploy failed — check logs above." -ForegroundColor Red
+    Write-Host "Cloudflare deploy failed - check logs above." -ForegroundColor Red
     exit 1
 }

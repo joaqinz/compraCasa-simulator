@@ -58,5 +58,15 @@
     "id": "plazo",
     "term": "Plazo del crédito",
     "definition": "Cantidad de años en que pagarás el crédito hipotecario. Un plazo más largo baja el dividendo mensual, pero aumenta los intereses totales pagados."
+  },
+  {
+    "id": "credito",
+    "term": "Monto del crédito",
+    "definition": "Lo que el banco te presta: el precio de la propiedad menos tu pie. Sobre este monto se calculan los intereses y el dividendo."
+  },
+  {
+    "id": "gastos-operacionales",
+    "term": "Gastos operacionales",
+    "definition": "Costos de cerrar la compra que no son parte del pie: tasación, estudio de títulos, notaría, inscripción en el Conservador de Bienes Raíces e impuesto al mutuo. Suelen sumar entre 1% y 3% del valor de la propiedad y se pagan con tus ahorros."
   }
 ]

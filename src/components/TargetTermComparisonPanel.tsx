@@ -37,11 +37,11 @@ export function TargetTermComparisonPanel({ data, currentTerm, ufValueCLP, userI
               <div className="flex items-center justify-between text-xs">
                 <span className={clsx("font-medium", isCurrent ? "text-slate-900" : "text-slate-600")}>
                   {point.termYears} años
-                  {isCurrent && <span className="ml-1.5 text-[10px] font-semibold text-blue-600">actual</span>}
+                  {isCurrent && <span className="ml-1.5 text-[11px] font-semibold text-blue-600">actual</span>}
                 </span>
                 <span className={clsx("font-semibold", isCurrent ? "text-slate-900" : "text-slate-600")}>
                   {formatUF(point.dividendUF, 2)}
-                  <span className="ml-1.5 font-normal text-slate-400">{formatCLP(point.dividendUF * ufValueCLP)}</span>
+                  <span className="ml-1.5 font-normal text-slate-500">{formatCLP(point.dividendUF * ufValueCLP)}</span>
                 </span>
               </div>
               <div className="h-6 w-full overflow-hidden rounded-full bg-slate-100">

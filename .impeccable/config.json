@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "instrument sans",
+        "createdAt": "2026-11-14T17:53:29.307Z",
+        "reason": "Claude chose it as the plain, tabular-figure text face when the user asked to replace Inter; personality comes from Bricolage Grotesque on headings and figures"
+      }
+    ]
+  }
+}

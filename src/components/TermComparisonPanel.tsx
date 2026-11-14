@@ -34,11 +34,11 @@ export function TermComparisonPanel({ data, currentTerm, ufValueCLP }: Props) {
               <div className="flex items-center justify-between text-xs">
                 <span className={clsx("font-medium", isCurrent ? "text-slate-900" : "text-slate-600")}>
                   {point.termYears} años
-                  {isCurrent && <span className="ml-1.5 text-[10px] font-semibold text-blue-600">actual</span>}
+                  {isCurrent && <span className="ml-1.5 text-[11px] font-semibold text-blue-600">actual</span>}
                 </span>
                 <span className={clsx("font-semibold", isCurrent ? "text-slate-900" : "text-slate-600")}>
                   {formatUF(point.maxPropertyUF, 0)}
-                  <span className="ml-1.5 font-normal text-slate-400">{formatCLP(point.maxPropertyUF * ufValueCLP)}</span>
+                  <span className="ml-1.5 font-normal text-slate-500">{formatCLP(point.maxPropertyUF * ufValueCLP)}</span>
                 </span>
               </div>
               <div className="h-6 w-full overflow-hidden rounded-full bg-slate-100">
@@ -55,7 +55,7 @@ export function TermComparisonPanel({ data, currentTerm, ufValueCLP }: Props) {
         })}
       </div>
       {data.length >= 2 && (
-        <p className="border-t pt-2 text-[11px] text-slate-400">
+        <p className="border-t pt-2 text-[11px] text-slate-500">
           Mayor plazo suele bajar el dividendo mensual, pero aumenta los intereses totales pagados.
         </p>
       )}

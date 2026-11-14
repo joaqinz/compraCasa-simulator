@@ -64,8 +64,8 @@ export function RateComparisonPanel({ data, currentRate, ufValueCLP, userIncomeU
               <span className={clsx("text-xs font-bold leading-tight", isCurrent ? "text-blue-700" : "text-slate-700")}>
                 {point.annualRatePct.toFixed(2)}%
               </span>
-              <span className="text-[10px] leading-tight text-slate-600">{formatUF(point.dividendUF, 2)}</span>
-              <span className="text-[9px] leading-tight text-slate-400">{formatCLP(point.dividendUF * ufValueCLP)}</span>
+              <span className="text-[11px] leading-tight text-slate-600">{formatUF(point.dividendUF, 2)}</span>
+              <span className="text-[9px] leading-tight text-slate-500">{formatCLP(point.dividendUF * ufValueCLP)}</span>
               {feasible === true && <span className="text-[9px] font-semibold leading-tight text-emerald-600">Sí</span>}
               {feasible === false && <span className="text-[9px] font-semibold leading-tight text-red-500">No</span>}
               {isCurrent && <span className="text-[8px] font-medium leading-tight text-blue-500">actual</span>}

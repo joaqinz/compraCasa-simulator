@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { ScenarioInput, ScenarioOutput, SensitivityRow } from "@/types/finance";
 import { getEffectiveEquityRatio } from "@/lib/affordability";
 import type {
@@ -16,6 +16,7 @@ import { RateComparisonPanel } from "./RateComparisonPanel";
 import { TermComparisonPanel } from "./TermComparisonPanel";
 import { TargetTermComparisonPanel } from "./TargetTermComparisonPanel";
 import { SavingsSensitivityPanel } from "./SavingsSensitivityPanel";
+import { RateMaxPanel } from "./RateMaxPanel";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
 
 type Props = {
@@ -33,17 +34,6 @@ type Props = {
 
 const tabs = ["Por plazo", "Por pie", "Por tasa"];
 
-const RateMaxPropertyChart = lazy(() =>
-  import("./charts/RateMaxPropertyChart").then((module) => ({ default: module.RateMaxPropertyChart }))
-);
-
-function ChartLoading() {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-      Cargando...
-    </div>
-  );
-}
 
 export function SensitivityPanel({
   termMaxData,
@@ -61,7 +51,7 @@ export function SensitivityPanel({
   const [showTable, setShowTable] = useState(true);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const isTargetMode = input.mode === "target_property";
-  const selectedBankName = getBankPreset(input.selectedBankId)?.bankName ?? "Ingreso manual";
+  const selectedBankName = getBankPreset(input.selectedBankId)?.bankName ?? "Otra tasa (manual)";
 
   const currentSavingsUF =
     input.savingsAmount != null ? toUF(input.savingsAmount, input.savingsUnit, input.ufValueCLP) : 0;
@@ -114,6 +104,7 @@ export function SensitivityPanel({
           currentSavingsUF={currentSavingsUF}
           ufValueCLP={input.ufValueCLP}
           minPiePct={Math.round(getEffectiveEquityRatio(input) * 100)}
+          closingPct={input.reserveClosingCosts ? 2 : 0}
         />
       );
     }
@@ -129,11 +120,7 @@ export function SensitivityPanel({
       );
     }
 
-    return (
-      <Suspense fallback={<ChartLoading />}>
-        <RateMaxPropertyChart data={rateMaxData} currentRate={input.annualRatePct} />
-      </Suspense>
-    );
+    return <RateMaxPanel data={rateMaxData} currentRate={input.annualRatePct} ufValueCLP={input.ufValueCLP} />;
   }
 
   return (
@@ -167,12 +154,9 @@ export function SensitivityPanel({
         <div className="p-4">
           <ErrorBoundary
             key={`tab-${activeTab}-${isTargetMode}`}
-            fallback={(error) => (
+            fallback={() => (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 Este panel falló al cargar. El resto del simulador sigue disponible.
-                {error?.message && (
-                  <div className="mt-2 break-words font-mono text-xs text-amber-900">{error.message}</div>
-                )}
               </div>
             )}
           >
@@ -197,6 +181,7 @@ export function SensitivityPanel({
               rows={tableRows}
               ufValueCLP={input.ufValueCLP}
               highlightPropertyUF={highlightPropertyUF}
+              highlightLabel={isTargetMode ? "Tu objetivo" : "Tu máximo"}
               userIncomeUF={userIncomeUF}
               userSavingsUF={userSavingsUF}
               currentPiePct={input.downPaymentPct}

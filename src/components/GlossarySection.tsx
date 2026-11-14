@@ -27,7 +27,7 @@ export function GlossarySection() {
         aria-controls="financial-glossary-panel"
       >
         <span>Glosario de términos financieros</span>
-        <span className="text-xs text-slate-400">{open ? "Ocultar" : "Ver términos"}</span>
+        <span className="text-xs text-slate-500">{open ? "Ocultar" : "Ver términos"}</span>
       </button>
 
       {open && (
@@ -45,7 +45,7 @@ export function GlossarySection() {
                   aria-controls={`glossary-term-${term.id}`}
                 >
                   <span className="font-medium text-slate-700">{term.term}</span>
-                  <span className="ml-2 text-xs text-slate-400">{isOpen ? "Ocultar" : "Ver"}</span>
+                  <span className="ml-2 text-xs text-slate-500">{isOpen ? "Ocultar" : "Ver"}</span>
                 </button>
                 {isOpen && (
                   <p
