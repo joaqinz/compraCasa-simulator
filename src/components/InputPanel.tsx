@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
+import clsx from "clsx";
 import type { ScenarioInput, MoneyUnit } from "@/types/finance";
 import { MoneyInput } from "./ui/MoneyInput";
 import { Tooltip } from "./ui/Tooltip";
 import { BankSelector } from "./BankSelector";
-import { PieMinimumControl } from "./AdvancedConfig";
 import { getBankPreset } from "@/lib/bankPresets";
+import { formatDecimal } from "@/lib/formatters";
 
 const TERM_OPTIONS = [15, 20, 25, 30];
 
@@ -15,173 +16,145 @@ type Props = {
   calculatedCaePct?: number;
 };
 
-function isDesktopViewport() {
-  try {
-    return window.matchMedia("(min-width: 1024px)").matches;
-  } catch {
-    return true;
-  }
-}
-
 export function InputPanel({ scenario, onChange, loanAmountUF, calculatedCaePct }: Props) {
   const { mode } = scenario;
   const termButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  // On phones the bank details start collapsed so the result is reachable quickly.
-  const [conditionsOpen, setConditionsOpen] = useState(isDesktopViewport);
+  const [conditionsOpen, setConditionsOpen] = useState(false);
 
   function handleTermKeyDown(index: number, event: React.KeyboardEvent<HTMLButtonElement>) {
     let nextIndex: number | null = null;
-
     if (event.key === "ArrowRight") nextIndex = (index + 1) % TERM_OPTIONS.length;
     if (event.key === "ArrowLeft") nextIndex = (index - 1 + TERM_OPTIONS.length) % TERM_OPTIONS.length;
-    if (event.key === "ArrowDown") nextIndex = (index + 2) % TERM_OPTIONS.length;
-    if (event.key === "ArrowUp") nextIndex = (index - 2 + TERM_OPTIONS.length) % TERM_OPTIONS.length;
-
     if (nextIndex != null) {
       event.preventDefault();
       termButtonRefs.current[nextIndex]?.focus();
     }
   }
 
-  const conditionsSummary = `${scenario.selectedBankId === "manual" ? "Otra tasa" : getBankPreset(scenario.selectedBankId)?.bankName ?? "Banco"} · ${scenario.annualRatePct
-    .toFixed(2)
-    .replace(".", ",")}% · dividendo máx. ${scenario.maxDividendIncomeRatioPct}% del sueldo`;
+  const bankLabel =
+    scenario.selectedBankId === "manual" ? "Otra tasa" : getBankPreset(scenario.selectedBankId)?.bankName ?? "Banco";
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
-        <div className="mb-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">Información base</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">Los datos que definen tu punto de partida.</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3">
-          <div>
-            <MoneyInput
-              label="Ingreso mensual neto"
-              value={scenario.netMonthlyIncomeAmount}
-              unit={scenario.netMonthlyIncomeUnit}
-              onValueChange={(value) => onChange({ netMonthlyIncomeAmount: value })}
-              onUnitChange={(unit: MoneyUnit) => onChange({ netMonthlyIncomeUnit: unit })}
-              placeholder={scenario.netMonthlyIncomeUnit === "CLP" ? "ej. 2.000.000" : "ej. 62,3"}
-              tooltipTermId="ingreso-mensual-neto"
-            />
-          </div>
+    <div className="surface-card rounded-2xl p-4 sm:p-5">
+      <div
+        className={clsx(
+          "grid items-end gap-3 sm:grid-cols-2",
+          mode === "target_property" ? "lg:grid-cols-[1fr_1fr_1fr_auto]" : "lg:grid-cols-[1fr_1fr_auto]"
+        )}
+      >
+        {mode === "target_property" && (
+          <MoneyInput
+            label="Precio de la propiedad"
+            value={scenario.targetPropertyAmount}
+            unit={scenario.targetPropertyUnit}
+            onValueChange={(value) => onChange({ targetPropertyAmount: value })}
+            onUnitChange={(unit: MoneyUnit) => onChange({ targetPropertyUnit: unit })}
+            placeholder={scenario.targetPropertyUnit === "CLP" ? "ej. 140.000.000" : "ej. 3.500"}
+            tooltipTermId="precio-objetivo"
+          />
+        )}
+        <MoneyInput
+          label="Ingreso mensual neto"
+          value={scenario.netMonthlyIncomeAmount}
+          unit={scenario.netMonthlyIncomeUnit}
+          onValueChange={(value) => onChange({ netMonthlyIncomeAmount: value })}
+          onUnitChange={(unit: MoneyUnit) => onChange({ netMonthlyIncomeUnit: unit })}
+          placeholder={scenario.netMonthlyIncomeUnit === "CLP" ? "ej. 2.000.000" : "ej. 62,3"}
+          tooltipTermId="ingreso-mensual-neto"
+        />
+        <MoneyInput
+          label={mode === "target_property" ? "Ahorros (opcional)" : "Ahorros disponibles"}
+          value={scenario.savingsAmount}
+          unit={scenario.savingsUnit}
+          onValueChange={(value) => onChange({ savingsAmount: value })}
+          onUnitChange={(unit: MoneyUnit) => onChange({ savingsUnit: unit })}
+          placeholder={scenario.savingsUnit === "CLP" ? "ej. 30.000.000" : "ej. 750"}
+          tooltipTermId="pie"
+        />
 
-          {mode === "income" && (
-            <MoneyInput
-              label="Ahorros disponibles"
-              value={scenario.savingsAmount}
-              unit={scenario.savingsUnit}
-              onValueChange={(value) => onChange({ savingsAmount: value })}
-              onUnitChange={(unit: MoneyUnit) => onChange({ savingsUnit: unit })}
-              placeholder={scenario.savingsUnit === "CLP" ? "ej. 30.000.000 (vacío = $0)" : "ej. 750"}
-              tooltipTermId="pie"
-            />
-          )}
-
-          {mode === "target_property" && (
-            <>
-              <MoneyInput
-                label="Precio de la propiedad objetivo"
-                value={scenario.targetPropertyAmount}
-                unit={scenario.targetPropertyUnit}
-                onValueChange={(value) => onChange({ targetPropertyAmount: value })}
-                onUnitChange={(unit: MoneyUnit) => onChange({ targetPropertyUnit: unit })}
-                placeholder={scenario.targetPropertyUnit === "CLP" ? "ej. 140.000.000" : "ej. 3.500"}
-                tooltipTermId="precio-objetivo"
-              />
-              <MoneyInput
-                label="Ahorros disponibles (opcional)"
-                value={scenario.savingsAmount}
-                unit={scenario.savingsUnit}
-                onValueChange={(value) => onChange({ savingsAmount: value })}
-                onUnitChange={(unit: MoneyUnit) => onChange({ savingsUnit: unit })}
-                placeholder={scenario.savingsUnit === "CLP" ? "ej. 30.000.000" : "ej. 750"}
-                tooltipTermId="pie"
-              />
-            </>
-          )}
-
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 shrink-0 accent-teal-700"
-              checked={scenario.reserveClosingCosts}
-              onChange={(event) => onChange({ reserveClosingCosts: event.target.checked })}
-            />
-            <span className="text-xs leading-5 text-slate-700">
-              <span className="font-medium">Reservar 2% para gastos operacionales</span>
-              <Tooltip termId="gastos-operacionales" />
-              <span className="block text-slate-500">Notaría, CBR, tasación e impuesto al mutuo. Sale de tus ahorros.</span>
-            </span>
-          </label>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">Plazo</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Más años baja el dividendo, pero pagas más intereses.</p>
+        <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
+          <span id="term-label" className="text-sm font-medium text-slate-700">
+            Plazo
+          </span>
+          <div className="grid grid-cols-4 gap-1 rounded-lg border border-slate-300 bg-slate-50 p-0.5" role="group" aria-labelledby="term-label">
+            {TERM_OPTIONS.map((term, index) => (
+              <button
+                key={term}
+                ref={(element) => {
+                  termButtonRefs.current[index] = element;
+                }}
+                type="button"
+                aria-pressed={scenario.termYears === term}
+                onClick={() => onChange({ termYears: term })}
+                onKeyDown={(event) => handleTermKeyDown(index, event)}
+                className={clsx(
+                  "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400",
+                  scenario.termYears === term ? "bg-teal-700 text-white shadow-sm" : "text-slate-600 hover:bg-white"
+                )}
+              >
+                {term} años
+              </button>
+            ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plazo del crédito">
-          {TERM_OPTIONS.map((term, index) => (
-            <button
-              key={term}
-              ref={(element) => {
-                termButtonRefs.current[index] = element;
-              }}
-              type="button"
-              aria-pressed={scenario.termYears === term}
-              onClick={() => onChange({ termYears: term })}
-              onKeyDown={(event) => handleTermKeyDown(index, event)}
-              className={`rounded-xl border py-2.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400 ${
-                scenario.termYears === term
-                  ? "border-teal-700 bg-teal-700 text-white shadow-md shadow-teal-900/15"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50"
-              }`}
-            >
-              {term} años
-            </button>
-          ))}
-        </div>
-      </section>
+      </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        <label
+          className={clsx(
+            "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+            scenario.reserveClosingCosts
+              ? "border-teal-200 bg-teal-50 text-teal-900"
+              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          )}
+        >
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-teal-700"
+            checked={scenario.reserveClosingCosts}
+            onChange={(event) => onChange({ reserveClosingCosts: event.target.checked })}
+          />
+          Reservar 2% para gastos operacionales
+          <Tooltip termId="gastos-operacionales" />
+        </label>
+
         <button
           type="button"
           onClick={() => setConditionsOpen((value) => !value)}
           aria-expanded={conditionsOpen}
           aria-controls="conditions-panel"
-          className="flex w-full items-center justify-between gap-3 bg-white px-4 py-3 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+          className={clsx(
+            "inline-flex min-w-0 max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400",
+            conditionsOpen ? "border-blue-300 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          )}
         >
-          <span className="min-w-0">
-            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">Banco y condiciones</span>
-            {!conditionsOpen && <span className="mt-0.5 block truncate text-[11px] text-slate-500">{conditionsSummary}</span>}
+          <span className="shrink-0 whitespace-nowrap font-semibold">Banco y condiciones</span>
+          <span className="truncate text-slate-500">
+            {bankLabel} · {formatDecimal(scenario.annualRatePct)}% · pie mín. {100 - scenario.maxFinancingPct}% · dividendo máx.{" "}
+            {scenario.maxDividendIncomeRatioPct}% del sueldo
           </span>
-          <span className="shrink-0 text-xs font-medium text-blue-700">{conditionsOpen ? "Ocultar" : "Ajustar"}</span>
+          <span aria-hidden="true" className={clsx("shrink-0 transition-transform", conditionsOpen && "rotate-180")}>
+            ▾
+          </span>
         </button>
-
-        {conditionsOpen && (
-          <div id="conditions-panel" className="flex flex-col gap-4 border-t border-slate-200/80 bg-slate-50/40 p-3">
-            <BankSelector
-              selectedBankId={scenario.selectedBankId}
-              termYears={scenario.termYears}
-              annualRatePct={scenario.annualRatePct}
-              caePct={scenario.caePct}
-              monthlyInsuranceUF={scenario.monthlyInsuranceUF}
-              maxFinancingPct={scenario.maxFinancingPct}
-              downPaymentPct={scenario.downPaymentPct}
-              maxDividendIncomeRatioPct={scenario.maxDividendIncomeRatioPct}
-              loanAmountUF={loanAmountUF}
-              calculatedCaePct={calculatedCaePct}
-              onChange={onChange}
-            />
-            <PieMinimumControl scenario={scenario} onChange={onChange} />
-          </div>
-        )}
       </div>
+
+      {conditionsOpen && (
+        <div id="conditions-panel" className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:p-4">
+          <BankSelector
+            selectedBankId={scenario.selectedBankId}
+            termYears={scenario.termYears}
+            annualRatePct={scenario.annualRatePct}
+            caePct={scenario.caePct}
+            monthlyInsuranceUF={scenario.monthlyInsuranceUF}
+            maxFinancingPct={scenario.maxFinancingPct}
+            maxDividendIncomeRatioPct={scenario.maxDividendIncomeRatioPct}
+            loanAmountUF={loanAmountUF}
+            calculatedCaePct={calculatedCaePct}
+            onChange={onChange}
+          />
+        </div>
+      )}
     </div>
   );
 }

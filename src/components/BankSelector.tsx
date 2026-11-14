@@ -95,7 +95,6 @@ type Props = {
   caePct: number;
   monthlyInsuranceUF: number;
   maxFinancingPct: number;
-  downPaymentPct: number;
   maxDividendIncomeRatioPct: number;
   loanAmountUF?: number;
   calculatedCaePct?: number;
@@ -136,7 +135,6 @@ export function BankSelector({
   caePct,
   monthlyInsuranceUF,
   maxFinancingPct,
-  downPaymentPct,
   maxDividendIncomeRatioPct,
   loanAmountUF,
   calculatedCaePct,
@@ -155,7 +153,6 @@ export function BankSelector({
   const sliderValueLabelTransform =
     sliderProgressPct < 8 ? "translateX(0)" : sliderProgressPct > 92 ? "translateX(-100%)" : "translateX(-50%)";
   const bankMinPiePct = 100 - maxFinancingPct;
-  const configuredPieOverridesBank = downPaymentPct > bankMinPiePct + 0.01;
   const termAvailable = selectedBank?.availableTermsYears.includes(termYears) ?? true;
   const metricInputClass =
     "h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -179,8 +176,7 @@ export function BankSelector({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
-      <div className="grid gap-4">
+    <section className="grid gap-5 lg:grid-cols-3">
         <div className="min-w-0">
           <label htmlFor="bank-select" className="mb-1 block text-sm font-medium text-slate-700">
             Banco
@@ -204,6 +200,28 @@ export function BankSelector({
               ? "Ingresa la tasa y el seguro que te cotizó tu banco."
               : `Bancos ordenados del más barato al más caro según CAE (costo total del crédito). Pie mínimo: ${100 - maxFinancingPct}%.`}
           </p>
+          {!isManual && selectedBank && selectedTermPreset && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+              {selectedTermPreset.termYears === termYears ? (
+                <span>
+                  Tasas CMF {selectedTermPreset.termYears} años · {selectedTermPreset.lastUpdated}
+                </span>
+              ) : (
+                <span>
+                  La CMF no publica {termYears} años para este banco; usamos la tasa a {selectedTermPreset.termYears} años
+                </span>
+              )}
+              <a
+                href={selectedTermPreset.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-slate-700"
+              >
+                Fuente
+              </a>
+              <span>Valores referenciales.</span>
+            </div>
+          )}
         </div>
 
         <div>
@@ -258,12 +276,13 @@ export function BankSelector({
                 className={metricInputClass}
                 value={maxFinancingPct}
                 onValueChange={(value) =>
-                  onChange({ maxFinancingPct: value, downPaymentPct: Math.max(0, 100 - value) })
+                  onChange({ maxFinancingPct: value })
                 }
               />
             ) : (
               `${maxFinancingPct}%`
             )}
+            <span className="block text-[11px] font-normal text-slate-500">Pie mínimo {bankMinPiePct}%</span>
           </Metric>
 
           {!isManual && selectedBank && !termAvailable && (
@@ -272,52 +291,15 @@ export function BankSelector({
             </Metric>
           )}
           </div>
-          {configuredPieOverridesBank && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-4 text-amber-900">
-              <span>
-                Tu pie mínimo configurado ({formatDecimal(downPaymentPct, 0)}%) es mayor que el del banco ({formatDecimal(bankMinPiePct, 0)}%), así que se usa {formatDecimal(downPaymentPct, 0)}%.
-              </span>
-              <button
-                type="button"
-                onClick={() => onChange({ downPaymentPct: bankMinPiePct })}
-                className="rounded-md border border-amber-300 bg-white px-2 py-0.5 font-semibold hover:bg-amber-100"
-              >
-                Usar {formatDecimal(bankMinPiePct, 0)}%
-              </button>
-            </div>
-          )}
           {isManual && calculatedCaePct != null && loanAmountUF != null && (
             <p className="mt-2 text-[11px] leading-4 text-slate-500">
               CAE estimada sobre un crédito de {formatUF(loanAmountUF, 0)} con seguro mensual fijo. Es referencial, no una CAE bancaria.
             </p>
           )}
         </div>
-      </div>
 
-      {!isManual && selectedBank && selectedTermPreset && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
-          {selectedTermPreset.termYears === termYears ? (
-            <span>
-              Tasas CMF {selectedTermPreset.termYears} años · {selectedTermPreset.lastUpdated}
-            </span>
-          ) : (
-            <span>
-              La CMF no publica {termYears} años para este banco; usamos la tasa a {selectedTermPreset.termYears} años
-            </span>
-          )}
-          <a
-            href={selectedTermPreset.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-slate-700"
-          >
-            Fuente
-          </a>
-          <span>Valores referenciales.</span>
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-3 border-t border-slate-200/80 pt-4">
+      <div className="flex min-w-0 flex-col gap-4">
+      <div className="grid gap-3">
         <div>
           <label htmlFor="carga-slider" className="flex items-center text-xs font-medium text-slate-700">
             ¿Cuánto de tu sueldo puede ir al dividendo? <Tooltip termId="carga-financiera" />
@@ -361,7 +343,7 @@ export function BankSelector({
           </div>
         </div>
       </div>
-      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
         <div className="flex items-start gap-2.5">
           <span className="mt-0.5 text-sm" aria-hidden="true">◆</span>
           <div className="min-w-0 flex-1">
@@ -381,6 +363,7 @@ export function BankSelector({
             </p>
           </div>
         </div>
+      </div>
       </div>
     </section>
   );

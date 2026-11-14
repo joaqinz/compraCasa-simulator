@@ -289,7 +289,7 @@ export function ResultCards({ output, input, status }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {output.fullMonthlyDividendUF != null && (
           <Card
             title={input.mode === "income" ? "Dividendo de esta propiedad" : "Dividendo mensual estimado"}

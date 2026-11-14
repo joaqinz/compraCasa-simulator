@@ -46,7 +46,7 @@ const defaultScenario: ScenarioInput = {
   targetPropertyAmount: undefined,
   targetPropertyUnit: "UF",
   termYears: defaults.termYears,
-  downPaymentPct: defaults.downPaymentPct,
+  downPaymentPct: 100 - (defaultResolvedPreset?.bank.maxFinancingPct ?? defaults.maxFinancingPct),
   annualRatePct: defaultResolvedPreset?.term.annualRatePct ?? defaults.annualRatePct,
   caePct: defaultResolvedPreset?.term.caePct ?? defaults.caePct,
   monthlyInsuranceUF: defaultResolvedPreset?.term.monthlyInsuranceUF ?? defaults.monthlyInsuranceUF,
@@ -80,8 +80,11 @@ type CopyToast = {
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "UPDATE_SCENARIO":
-    case "LOAD_FROM_URL":
-      return { ...state, scenario: { ...state.scenario, ...action.patch } };
+    case "LOAD_FROM_URL": {
+      const merged = { ...state.scenario, ...action.patch };
+      // The pie minimum always follows the bank's max financing (single control in the UI).
+      return { ...state, scenario: { ...merged, downPaymentPct: Math.max(0, 100 - merged.maxFinancingPct) } };
+    }
     case "SET_UF_LOADING":
       return { ...state, ufLoading: true, ufError: false };
     case "SET_UF":
@@ -344,24 +347,12 @@ export function App() {
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 lg:py-8">
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(320px,360px)_minmax(0,1fr)]">
-          <aside className="surface-card rounded-3xl p-4 sm:p-5 lg:sticky lg:top-5 lg:max-h-[calc(100vh-2.5rem)] lg:overflow-y-auto">
-            <div className="mb-5 border-b border-slate-100 pb-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Tus datos</p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
-                Configura tu escenario
-              </h2>
-              <p className="mt-1 text-sm leading-5 text-slate-500">
-                Usa solo lo que sabes hoy. Puedes ajustar los supuestos después.
-              </p>
-            </div>
-            <InputPanel
-              scenario={scenario}
-              onChange={handleChange}
-              loanAmountUF={output.loanAmountUF}
-              calculatedCaePct={calculatedManualCaePct}
-            />
-          </aside>
+        <InputPanel
+          scenario={scenario}
+          onChange={handleChange}
+          loanAmountUF={output.loanAmountUF}
+          calculatedCaePct={calculatedManualCaePct}
+        />
 
           <section className="min-w-0">
             {!hasValidInputs ? (
@@ -431,7 +422,6 @@ export function App() {
               </>
             )}
           </section>
-        </div>
 
         <GlossarySection />
         <DisclaimerSection ufSource={ufMetadata?.source} />
