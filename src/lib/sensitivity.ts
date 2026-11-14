@@ -15,82 +15,6 @@ export function linspace(min: number, max: number, steps: number): number[] {
   return result;
 }
 
-export type AffordabilityPoint = {
-  propertyPriceUF: number;
-  downPaymentPct: number;
-  requiredIncomeUF: number;
-  requiredIncomeCLP: number;
-  feasible: boolean;
-};
-
-export function generatePropertyPriceRange(
-  baseInput: ScenarioInput,
-  downPaymentPcts: number[],
-  priceRangeUF: [number, number],
-  steps: number
-): AffordabilityPoint[] {
-  const prices = linspace(priceRangeUF[0], priceRangeUF[1], steps);
-  const results: AffordabilityPoint[] = [];
-
-  for (const dp of downPaymentPcts) {
-    for (const price of prices) {
-      const input: ScenarioInput = {
-        ...baseInput,
-        mode: "target_property",
-        targetPropertyAmount: price,
-        targetPropertyUnit: "UF",
-        downPaymentPct: dp,
-      };
-      const out = runScenario(input);
-      results.push({
-        propertyPriceUF: price,
-        downPaymentPct: dp,
-        requiredIncomeUF: out.requiredIncomeUF ?? 0,
-        requiredIncomeCLP: (out.requiredIncomeUF ?? 0) * baseInput.ufValueCLP,
-        feasible: out.feasible,
-      });
-    }
-  }
-  return results;
-}
-
-export type TermPoint = {
-  propertyPriceUF: number;
-  termYears: number;
-  requiredIncomeUF: number;
-  requiredIncomeCLP: number;
-};
-
-export function generateTermComparison(
-  baseInput: ScenarioInput,
-  terms: number[],
-  priceRangeUF: [number, number],
-  steps: number
-): TermPoint[] {
-  const prices = linspace(priceRangeUF[0], priceRangeUF[1], steps);
-  const results: TermPoint[] = [];
-
-  for (const term of terms) {
-    for (const price of prices) {
-      const input: ScenarioInput = {
-        ...baseInput,
-        mode: "target_property",
-        targetPropertyAmount: price,
-        targetPropertyUnit: "UF",
-        termYears: term,
-      };
-      const out = runScenario(input);
-      results.push({
-        propertyPriceUF: price,
-        termYears: term,
-        requiredIncomeUF: out.requiredIncomeUF ?? 0,
-        requiredIncomeCLP: (out.requiredIncomeUF ?? 0) * baseInput.ufValueCLP,
-      });
-    }
-  }
-  return results;
-}
-
 export type RatePoint = {
   annualRatePct: number;
   requiredIncomeUF: number;
@@ -162,29 +86,6 @@ export function generateTargetTermSensitivity(
   });
 }
 
-export type HeatmapData = { z: number[][]; x: number[]; y: number[] };
-
-export function generateHeatmapData(
-  baseInput: ScenarioInput,
-  propertyPriceSteps: number[],
-  downPaymentPcts: number[]
-): HeatmapData {
-  const z: number[][] = downPaymentPcts.map((dp) =>
-    propertyPriceSteps.map((price) => {
-      const effectiveEquityRatio = Math.max(
-        dp / 100,
-        1 - baseInput.maxFinancingPct / 100
-      );
-      const loan = price * (1 - effectiveEquityRatio);
-      const base = calculateMonthlyPaymentUF(loan, baseInput.annualRatePct, baseInput.termYears);
-      const full = calculateFullDividendUF(base, baseInput.monthlyInsuranceUF);
-      const req = calculateRequiredIncomeUF(full, baseInput.maxDividendIncomeRatioPct);
-      return req * baseInput.ufValueCLP;
-    })
-  );
-  return { z, x: propertyPriceSteps, y: downPaymentPcts };
-}
-
 export type PieRatePoint = {
   downPaymentPct: number;
   annualRatePct: number;
@@ -241,28 +142,6 @@ export function generateTermMaxProperty(
     const out = runScenario({ ...baseInput, mode: "income", termYears: term });
     return {
       termYears: term,
-      maxPropertyUF: out.realisticMaxPropertyUF ?? 0,
-      bindingConstraint: out.bindingConstraint,
-    };
-  });
-}
-
-export type SavingsPoint = {
-  savingsUF: number;
-  savingsCLP: number;
-  maxPropertyUF: number;
-  bindingConstraint: BindingConstraint;
-};
-
-export function generateSavingsSensitivity(
-  baseInput: ScenarioInput,
-  savingsStepsUF: number[]
-): SavingsPoint[] {
-  return savingsStepsUF.map((savUF) => {
-    const out = runScenario({ ...baseInput, mode: "income", savingsAmount: savUF, savingsUnit: "UF" });
-    return {
-      savingsUF: savUF,
-      savingsCLP: savUF * baseInput.ufValueCLP,
       maxPropertyUF: out.realisticMaxPropertyUF ?? 0,
       bindingConstraint: out.bindingConstraint,
     };

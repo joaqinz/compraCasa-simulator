@@ -16,7 +16,9 @@ The app helps a user estimate:
 - how dividend, income requirements, and financing change with rate, term, and down payment assumptions
 - how different bank presets compare using CMF-based reference data
 
-It is designed to be published as a public static webpage and works well as a personal portfolio project hosted from GitHub and deployed to Netlify.
+It is designed to be published as a public static webpage and works well as a personal portfolio project hosted from GitHub and deployed to Cloudflare Pages.
+
+Live: https://compracasachile.pages.dev
 
 ## Features
 
@@ -31,7 +33,9 @@ It is designed to be published as a public static webpage and works well as a pe
   - down payment
   - mortgage term
   - interest rate
-- Charts and scenario tables for quick comparisons
+- Bar comparisons and scenario tables for quick comparisons
+- Optional 2% reserve for closing costs (gastos operacionales)
+- Save up to 3 scenarios in the browser and compare them side by side
 - Shareable scenarios through URL parameters
 - Static frontend deployment with no required backend for v1
 
@@ -56,20 +60,19 @@ The main product insight is the binding-constraint message. Instead of only show
 - `TypeScript`
 - `Vite`
 - `Tailwind CSS`
-- `Plotly`
 
 ## Project Structure
 
 ```text
 src/
-  components/        UI and charts
+  components/        UI components
   data/              default assumptions, glossary, bank presets
   lib/               mortgage math, UF service, formatting, URL state
   types/             shared TypeScript types
 scripts/
   update-cmf-rates.mjs
 public/
-  _redirects         SPA routing for Netlify
+  _redirects         SPA routing
 ```
 
 ## How the App Works
@@ -92,7 +95,9 @@ Three checks drive most of the experience:
 2. Debt burden rule:
    - `dividendo + seguro ≤ ingreso · carga financiera máxima`
 3. Financing rule:
-   - `crédito ≤ propiedad · financiamiento máximo`
+   - `crédito ≤ propiedad · financiamiento máximo` (the minimum down payment is `100% − financiamiento`)
+4. Closing-cost reserve (optional, on by default):
+   - `ahorros ≥ pie + 2% · propiedad`
 
 Those checks are what allow the UI to explain whether the active constraint is income, down payment, or the selected bank policy.
 
@@ -137,12 +142,6 @@ npm install
 npm run dev
 ```
 
-Or on this Windows setup:
-
-```powershell
-.\start.ps1
-```
-
 ### Build for production
 
 ```bash
@@ -159,50 +158,20 @@ npm run preview
 
 ## Deployment
 
-This project is a good fit for static hosting.
+The site is hosted on Cloudflare Pages (project `compracasachile`). `public/_redirects` handles SPA routing.
 
-### Recommended services
+On Windows, `deploy.ps1` commits, pushes, builds and uploads in one step:
 
-- `GitHub` for source control and public project hosting
-- `Netlify` for deployment
-- optional custom domain if you want a cleaner public URL
-
-### Why Netlify
-
-The repo already includes `public/_redirects` for single-page app routing:
-
-```text
-/* /index.html 200
+```powershell
+.\deploy.ps1 -Message "Describe the change"
 ```
 
-That makes Netlify a smooth default choice for this project.
+Or deploy manually:
 
-### Netlify configuration
-
-- Build command: `npm run build`
-- Publish directory: `dist`
-
-### Typical publish flow
-
-1. Create a GitHub repository
-2. Push this project to GitHub
-3. Create a Netlify site from that GitHub repo
-4. Set the build command to `npm run build`
-5. Set the publish directory to `dist`
-6. Deploy
-
-After that, every push to your main branch can trigger a new deployment automatically.
-
-## Suggested Personal Project Setup
-
-If your main goal is to make this public and keep it in your GitHub portfolio, the simplest setup is:
-
-- GitHub repository for the code
-- Netlify for hosting
-- README with screenshots and deployment link
-- optional custom domain later
-
-That is enough for a solid public version without adding unnecessary infrastructure.
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name compracasachile --branch main
+```
 
 ## Production Notes
 

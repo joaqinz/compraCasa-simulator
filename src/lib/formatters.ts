@@ -1,5 +1,3 @@
-import type { DisplayUnit } from "@/types/finance";
-
 const clpFormatter = new Intl.NumberFormat("es-CL", {
   style: "currency",
   currency: "CLP",
@@ -27,24 +25,6 @@ export function formatCLP(valueCLP: number): string {
 
 export function formatBoth(valueUF: number, ufValueCLP: number): string {
   return `${formatUF(valueUF)} / ${formatCLP(valueUF * ufValueCLP)}`;
-}
-
-export function formatPct(value: number): string {
-  return `${value}%`;
-}
-
-export function formatDisplayValue(
-  valueUF: number,
-  ufValueCLP: number,
-  unit: DisplayUnit
-): string {
-  if (unit === "UF") return formatUF(valueUF);
-  if (unit === "CLP") return formatCLP(valueUF * ufValueCLP);
-  return formatBoth(valueUF, ufValueCLP);
-}
-
-export function formatNumber(value: number): string {
-  return new Intl.NumberFormat("es-CL").format(value);
 }
 
 const decimalFormatters = new Map<number, Intl.NumberFormat>();

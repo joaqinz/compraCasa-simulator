@@ -16,10 +16,6 @@ export function getBankPreset(bankId: string): BankPreset | undefined {
   return bankPresets.find((preset) => preset.bankId === bankId);
 }
 
-export function getPresetTermYears(bankId: string): number[] {
-  return getBankPreset(bankId)?.availableTermsYears ?? presetTermYears;
-}
-
 export function resolveBankTermPreset(
   bankId: string,
   termYears: number

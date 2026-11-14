@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local Netlify folder
-.netlify
+
+# Personal Claude Code settings
+.claude/settings.local.json

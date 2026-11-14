@@ -4,7 +4,3 @@ export function toUF(amount: number, unit: MoneyUnit, ufValueCLP: number): numbe
   if (unit === "UF") return amount;
   return amount / ufValueCLP;
 }
-
-export function toCLP(amountUF: number, ufValueCLP: number): number {
-  return amountUF * ufValueCLP;
-}
