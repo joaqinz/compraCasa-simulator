@@ -28,11 +28,11 @@ git push origin main
 # -- 5. Build and deploy to Cloudflare Pages -----------------------------------
 Write-Host "`n[build] npm run build..." -ForegroundColor Cyan
 npm run build
-if (-not $?) { Write-Host "Build failed." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "Build failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "[deploy] wrangler pages deploy..." -ForegroundColor Cyan
 npx wrangler pages deploy dist --project-name compracasachile --branch main
-if ($?) {
+if ($LASTEXITCODE -eq 0) {
     Write-Host "`nDone. Site is live at https://compracasachile.pages.dev" -ForegroundColor Green
 } else {
     Write-Host "Cloudflare deploy failed - check logs above." -ForegroundColor Red
