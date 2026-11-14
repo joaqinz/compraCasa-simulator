@@ -28,11 +28,9 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
     targetPropertyAmount,
     targetPropertyUnit,
     termYears,
-    downPaymentPct,
     annualRatePct,
     monthlyInsuranceUF,
     maxDividendIncomeRatioPct,
-    maxFinancingPct,
   } = input;
 
   const incomeUF = netMonthlyIncomeAmount != null
@@ -43,29 +41,31 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
     ? toUF(savingsAmount, savingsUnit, ufValueCLP)
     : undefined;
 
-  const effectiveEquityRatio = Math.max(
-    downPaymentPct / 100,
-    1 - maxFinancingPct / 100
-  );
+  const effectiveEquityRatio = getEffectiveEquityRatio(input);
+  const loanRatio = 1 - effectiveEquityRatio;
 
-  // Max property by savings
-  const maxPropertyBySavingsUF = savingsUF != null
+  // Max loan the income supports (dividend + insurance ≤ income · carga)
+  let maxLoanByIncomeUF: number | undefined;
+  if (incomeUF != null) {
+    const maxBaseDividend = incomeUF * (maxDividendIncomeRatioPct / 100) - monthlyInsuranceUF;
+    maxLoanByIncomeUF = maxBaseDividend > 0
+      ? reverseMaxLoanUF(maxBaseDividend, annualRatePct, termYears)
+      : 0;
+  }
+
+  // Max property by savings: savings cover the minimum pie
+  const maxPropertyBySavingsUF = savingsUF != null && effectiveEquityRatio > 0
     ? savingsUF / effectiveEquityRatio
     : undefined;
 
-  // Max property by income
+  // Max property by income: max loan + every peso of savings used as pie.
+  // Without savings data, assume the minimum pie.
   let maxPropertyByIncomeUF: number | undefined;
-  if (incomeUF != null) {
-    const availableForMortgage = incomeUF * (maxDividendIncomeRatioPct / 100);
-    if (availableForMortgage > 0) {
-      const maxBaseDividend = availableForMortgage - monthlyInsuranceUF;
-      if (maxBaseDividend > 0) {
-        const maxLoan = reverseMaxLoanUF(maxBaseDividend, annualRatePct, termYears);
-        const loanRatio = 1 - effectiveEquityRatio;
-        maxPropertyByIncomeUF = loanRatio > 0 ? maxLoan / loanRatio : 0;
-      } else {
-        maxPropertyByIncomeUF = 0;
-      }
+  if (maxLoanByIncomeUF != null) {
+    if (savingsUF != null) {
+      maxPropertyByIncomeUF = maxLoanByIncomeUF + savingsUF;
+    } else if (loanRatio > 0) {
+      maxPropertyByIncomeUF = maxLoanByIncomeUF / loanRatio;
     } else {
       maxPropertyByIncomeUF = 0;
     }
@@ -77,14 +77,17 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
       : maxPropertyByIncomeUF ?? maxPropertyBySavingsUF;
 
   if (input.mode === "income") {
-    const bindingConstraint = deriveBindingConstraint(maxPropertyByIncomeUF, maxPropertyBySavingsUF, undefined);
+    const bindingConstraint = deriveBindingConstraint(maxPropertyByIncomeUF, maxPropertyBySavingsUF);
     const propertyPriceUF = realisticMaxPropertyUF;
-    const downPaymentUF = propertyPriceUF != null
-      ? calculateDownPaymentUF(propertyPriceUF, effectiveEquityRatio * 100)
-      : undefined;
-    const loanAmountUF = propertyPriceUF != null
-      ? calculateLoanAmountUF(propertyPriceUF, effectiveEquityRatio * 100)
-      : undefined;
+    let loanAmountUF: number | undefined;
+    let downPaymentUF: number | undefined;
+    if (propertyPriceUF != null) {
+      // With savings, the whole saving goes to the pie (max property is always ≥ savings).
+      loanAmountUF = savingsUF != null
+        ? Math.max(0, propertyPriceUF - savingsUF)
+        : propertyPriceUF * loanRatio;
+      downPaymentUF = propertyPriceUF - loanAmountUF;
+    }
     const baseMonthlyDividendUF = loanAmountUF != null
       ? calculateMonthlyPaymentUF(loanAmountUF, annualRatePct, termYears)
       : undefined;
@@ -98,10 +101,12 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
     return {
       propertyPriceUF,
       downPaymentUF,
+      minDownPaymentUF: propertyPriceUF != null ? propertyPriceUF * effectiveEquityRatio : undefined,
       loanAmountUF,
       baseMonthlyDividendUF,
       fullMonthlyDividendUF,
       requiredIncomeUF,
+      maxLoanByIncomeUF,
       maxPropertyByIncomeUF,
       maxPropertyBySavingsUF,
       realisticMaxPropertyUF,
@@ -117,17 +122,6 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
 
   const propertyPriceUF = toUF(targetPropertyAmount, targetPropertyUnit, ufValueCLP);
   const downPaymentUF = calculateDownPaymentUF(propertyPriceUF, effectiveEquityRatio * 100);
-  const requestedFinancingRatio = 1 - effectiveEquityRatio;
-
-  if (requestedFinancingRatio > maxFinancingPct / 100 + 0.001) {
-    return {
-      propertyPriceUF,
-      downPaymentUF,
-      bindingConstraint: "bank_policy",
-      feasible: false,
-    };
-  }
-
   const loanAmountUF = calculateLoanAmountUF(propertyPriceUF, effectiveEquityRatio * 100);
   const baseMonthlyDividendUF = calculateMonthlyPaymentUF(loanAmountUF, annualRatePct, termYears);
   const fullMonthlyDividendUF = calculateFullDividendUF(baseMonthlyDividendUF, monthlyInsuranceUF);
@@ -136,49 +130,56 @@ export function runScenario(input: ScenarioInput): ScenarioOutput {
   const incomeGapUF = incomeUF != null ? requiredIncomeUF - incomeUF : undefined;
   const savingsGapUF = savingsUF != null ? downPaymentUF - savingsUF : undefined;
 
-  const feasible =
-    (incomeGapUF == null || incomeGapUF <= AFFORDABILITY_TOLERANCE_UF) &&
-    (savingsGapUF == null || savingsGapUF <= AFFORDABILITY_TOLERANCE_UF);
+  const incomeShort = incomeGapUF != null && incomeGapUF > AFFORDABILITY_TOLERANCE_UF;
+  const savingsShort = savingsGapUF != null && savingsGapUF > AFFORDABILITY_TOLERANCE_UF;
+  const feasible = !incomeShort && !savingsShort;
 
-  const bindingConstraint = deriveBindingConstraint(maxPropertyByIncomeUF, maxPropertyBySavingsUF, propertyPriceUF);
+  const bindingConstraint: BindingConstraint =
+    incomeShort && savingsShort
+      ? "income_and_savings"
+      : incomeShort
+        ? "income"
+        : savingsShort
+          ? "savings"
+          : "none";
+
+  // If income falls short, the pie that would bring the loan down to what income supports
+  const downPaymentToFitIncomeUF =
+    incomeShort && maxLoanByIncomeUF != null
+      ? Math.max(downPaymentUF, propertyPriceUF - maxLoanByIncomeUF)
+      : undefined;
 
   return {
     propertyPriceUF,
     downPaymentUF,
+    minDownPaymentUF: downPaymentUF,
     loanAmountUF,
     baseMonthlyDividendUF,
     fullMonthlyDividendUF,
     requiredIncomeUF,
+    maxLoanByIncomeUF,
     maxPropertyByIncomeUF,
     maxPropertyBySavingsUF,
     realisticMaxPropertyUF,
     incomeGapUF,
     savingsGapUF,
+    downPaymentToFitIncomeUF,
     bindingConstraint,
     feasible,
   };
 }
 
+export function getEffectiveEquityRatio(input: Pick<ScenarioInput, "downPaymentPct" | "maxFinancingPct">): number {
+  return Math.max(input.downPaymentPct / 100, 1 - input.maxFinancingPct / 100);
+}
+
 function deriveBindingConstraint(
   byIncome: number | undefined,
-  bySavings: number | undefined,
-  target: number | undefined
+  bySavings: number | undefined
 ): BindingConstraint {
-  if (byIncome == null && bySavings == null) return "none";
-
-  if (target != null) {
-    const incomeShort = byIncome != null && byIncome < target - AFFORDABILITY_TOLERANCE_UF;
-    const savingsShort = bySavings != null && bySavings < target - AFFORDABILITY_TOLERANCE_UF;
-    if (incomeShort && savingsShort) return "income_and_savings";
-    if (incomeShort) return "income";
-    if (savingsShort) return "savings";
-    return "none";
-  }
-
-  if (byIncome != null && bySavings != null) {
-    if (byIncome < bySavings) return "income";
-    if (bySavings < byIncome) return "savings";
-  }
+  if (byIncome == null || bySavings == null) return "none";
+  if (byIncome < bySavings) return "income";
+  if (bySavings < byIncome) return "savings";
   return "none";
 }
 
@@ -207,6 +208,9 @@ export function deriveAffordabilityStatus(
     const maxGap = Math.max(incomeGapRatio ?? 0, savingsGapRatio ?? 0);
     return maxGap <= YELLOW_GAP_THRESHOLD ? "yellow" : "red";
   }
+
+  // Income mode answers "what's my max": it sits at the limit by definition, so no "Justo" warning.
+  if (input.mode === "income") return "green";
 
   const hasNarrowGap = [output.incomeGapUF, output.savingsGapUF].some(
     (gap) => gap != null && gap > 0 && gap <= AFFORDABILITY_TOLERANCE_UF

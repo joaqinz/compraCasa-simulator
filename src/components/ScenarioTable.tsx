@@ -13,6 +13,7 @@ type Props = {
   effectivePiePct: number;
   termYears: number;
   bankName: string;
+  usesAllSavingsAsPie?: boolean;
 };
 
 function MoneyCell({ uf, clp, decimals = 2 }: { uf: number; clp: number; decimals?: 0 | 2 }) {
@@ -34,6 +35,7 @@ export function ScenarioTable({
   effectivePiePct,
   termYears,
   bankName,
+  usesAllSavingsAsPie = false,
 }: Props) {
   const [showOnlyFeasible, setShowOnlyFeasible] = useState(false);
 
@@ -60,7 +62,10 @@ export function ScenarioTable({
         <div>
           <h3 className="text-xs font-medium text-slate-600">Escenarios de compra</h3>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            Escenarios a {effectivePiePct.toFixed(0)}% pie efectivo · plazo {termYears} años · banco {bankName}
+            {usesAllSavingsAsPie && userSavingsUF != null
+              ? `Usando todo tu ahorro como pie (mínimo ${effectivePiePct.toFixed(0)}%)`
+              : `Escenarios a ${effectivePiePct.toFixed(0)}% pie efectivo`}{" "}
+            · plazo {termYears} años · banco {bankName}
           </p>
           {usesBankAdjustedPie && (
             <p className="mt-0.5 text-[11px] text-amber-600">

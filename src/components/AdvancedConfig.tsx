@@ -25,14 +25,17 @@ export function AdvancedConfig({ scenario, onChange }: Props) {
         <div className="px-4 py-4 flex flex-col gap-4 bg-white">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600 flex items-center">
-              Pie (%) <Tooltip termId="pie" />
+              Pie mínimo (%) <Tooltip termId="pie" />
             </label>
+            <p className="text-[11px] leading-4 text-slate-500">
+              Si el banco exige más, se usa el mínimo del banco. En “Sé cuánto gano” se usan todos tus ahorros como pie.
+            </p>
             <div className="flex items-center gap-2">
               <input
                 type="range"
-                min="10"
+                min="0"
                 max="40"
-                step="5"
+                step="1"
                 className="flex-1"
                 value={scenario.downPaymentPct}
                 onChange={(e) => onChange({ downPaymentPct: parseInt(e.target.value) })}
@@ -40,7 +43,7 @@ export function AdvancedConfig({ scenario, onChange }: Props) {
               <span className="text-sm font-semibold text-slate-800 w-10 text-right">{scenario.downPaymentPct}%</span>
             </div>
             <div className="flex justify-between text-[10px] text-slate-400">
-              {[10, 15, 20, 25, 30, 35, 40].map((v) => <span key={v}>{v}%</span>)}
+              {[0, 10, 20, 30, 40].map((v) => <span key={v}>{v}%</span>)}
             </div>
           </div>
 

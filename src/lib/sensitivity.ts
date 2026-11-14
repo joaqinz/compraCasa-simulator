@@ -1,11 +1,10 @@
 import type { ScenarioInput, SensitivityRow, BindingConstraint } from "@/types/finance";
-import { AFFORDABILITY_TOLERANCE_UF, runScenario } from "./affordability";
+import { AFFORDABILITY_TOLERANCE_UF, getEffectiveEquityRatio, runScenario } from "./affordability";
 import {
   calculateMonthlyPaymentUF,
   calculateFullDividendUF,
   calculateRequiredIncomeUF,
   calculateDownPaymentUF,
-  calculateLoanAmountUF,
 } from "./mortgage";
 
 export function linspace(min: number, max: number, steps: number): number[] {
@@ -295,10 +294,8 @@ export function generateSensitivityTable(
   baseInput: ScenarioInput,
   propertyPrices: number[]
 ): SensitivityRow[] {
-  const effectiveEquityRatio = Math.max(
-    baseInput.downPaymentPct / 100,
-    1 - baseInput.maxFinancingPct / 100
-  );
+  const effectiveEquityRatio = getEffectiveEquityRatio(baseInput);
+  const useAllSavingsAsPie = baseInput.mode === "income";
 
   const incomeUF =
     baseInput.netMonthlyIncomeAmount != null
@@ -312,15 +309,18 @@ export function generateSensitivityTable(
       : undefined;
 
   return propertyPrices.map((price) => {
-    const dp = calculateDownPaymentUF(price, effectiveEquityRatio * 100);
-    const loan = calculateLoanAmountUF(price, effectiveEquityRatio * 100);
+    const minDp = calculateDownPaymentUF(price, effectiveEquityRatio * 100);
+    // Income mode: put all savings into the pie (never below the minimum), same as the headline result.
+    const dp =
+      useAllSavingsAsPie && savingsUF != null ? Math.min(price, Math.max(minDp, savingsUF)) : minDp;
+    const loan = price - dp;
     const base = calculateMonthlyPaymentUF(loan, baseInput.annualRatePct, baseInput.termYears);
     const full = calculateFullDividendUF(base, baseInput.monthlyInsuranceUF);
     const req = calculateRequiredIncomeUF(full, baseInput.maxDividendIncomeRatioPct);
 
     return {
       propertyPriceUF: price,
-      downPaymentPct: effectiveEquityRatio * 100,
+      downPaymentPct: price > 0 ? (dp / price) * 100 : effectiveEquityRatio * 100,
       downPaymentUF: dp,
       loanAmountUF: loan,
       fullDividendUF: full,

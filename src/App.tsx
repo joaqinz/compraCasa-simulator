@@ -325,7 +325,7 @@ export function App() {
           <div className="mt-6 max-w-3xl">
             <div className="max-w-2xl">
               <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                Entiende qué casa puedes comprar y qué necesita tu objetivo.
+                Entiende qué casa puedes comprar y qué necesitas para tu objetivo.
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-5 text-cyan-50/75">
                 Ajusta precio, pie, plazo y tasa para entender tu dividendo y el ingreso necesario.
@@ -384,7 +384,7 @@ export function App() {
                       termMaxData={termMaxData}
                       targetTermData={targetTermData}
                       rateMaxData={rateMaxData}
-                      maxPropertyByIncomeUF={output.maxPropertyByIncomeUF}
+                      output={output}
                       rateData={rateData}
                       pieRateData={pieRateData}
                       targetPropertyUF={targetPropertyUF}

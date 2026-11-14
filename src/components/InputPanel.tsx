@@ -127,6 +127,7 @@ export function InputPanel({ scenario, onChange, loanAmountUF, calculatedCaePct 
         caePct={scenario.caePct}
         monthlyInsuranceUF={scenario.monthlyInsuranceUF}
         maxFinancingPct={scenario.maxFinancingPct}
+        downPaymentPct={scenario.downPaymentPct}
         maxDividendIncomeRatioPct={scenario.maxDividendIncomeRatioPct}
         loanAmountUF={loanAmountUF}
         calculatedCaePct={calculatedCaePct}

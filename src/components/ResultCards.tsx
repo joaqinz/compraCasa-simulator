@@ -66,6 +66,12 @@ function formatPair(valueUF: number, ufValueCLP: number, decimals: 0 | 2 = 0) {
   return `${formatUF(valueUF, decimals)} · ${formatCLP(valueUF * ufValueCLP)}`;
 }
 
+const pctFormatter = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 });
+
+function formatPctValue(value: number) {
+  return `${pctFormatter.format(value)}%`;
+}
+
 function getIncomeUF(input: ScenarioInput) {
   if (input.netMonthlyIncomeAmount == null) return undefined;
   return input.netMonthlyIncomeUnit === "CLP"
@@ -89,6 +95,9 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
     Math.abs(byIncome - bySavings) <= Math.max(25, Math.min(byIncome, bySavings) * 0.01);
 
   if (input.mode === "income") {
+    const maxLoan = output.maxLoanByIncomeUF;
+    const savingsUF = getSavingsUF(input);
+
     if (isBalanced) {
       return {
         label: "tu ingreso y tu pie",
@@ -98,20 +107,20 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
       };
     }
 
-    if (output.bindingConstraint === "income" && byIncome != null && bySavings != null) {
+    if (output.bindingConstraint === "income" && maxLoan != null && savingsUF != null && bySavings != null) {
       return {
         label: "tu ingreso",
         title: "Restricción activa: tu ingreso",
-        body: `Tu pie alcanza para una propiedad de hasta ${formatUF(bySavings, 0)}, pero tu ingreso solo soporta el dividendo de una propiedad de ${formatUF(byIncome, 0)}.`,
-        action: "Para aumentar tu propiedad máxima, necesitas más ingreso, un plazo mayor o una tasa menor.",
+        body: `Tu ingreso soporta un crédito de hasta ${formatUF(maxLoan, 0)}. Sumando todos tus ahorros como pie (${formatUF(savingsUF, 0)}) llegas a ${formatUF(output.realisticMaxPropertyUF ?? 0, 0)}. El pie mínimo del banco recién te limitaría en ${formatUF(bySavings, 0)}.`,
+        action: "Para aumentar tu propiedad máxima: más ingreso, más ahorro, un plazo mayor o una tasa menor.",
       };
     }
 
-    if (output.bindingConstraint === "savings" && byIncome != null && bySavings != null) {
+    if (output.bindingConstraint === "savings" && maxLoan != null && byIncome != null) {
       return {
         label: "tu pie",
         title: "Restricción activa: tu pie",
-        body: `Tu ingreso califica para una propiedad de hasta ${formatUF(byIncome, 0)}, pero tus ahorros solo alcanzan para el pie de una propiedad de ${formatUF(bySavings, 0)}.`,
+        body: `Tus ahorros cubren el pie mínimo de una propiedad de hasta ${formatUF(output.realisticMaxPropertyUF ?? 0, 0)}. Tu ingreso soportaría un crédito mayor, de hasta ${formatUF(maxLoan, 0)}.`,
         action: "Para aumentar tu propiedad máxima, necesitas más ahorro o un banco que financie una mayor proporción.",
       };
     }
@@ -152,11 +161,16 @@ function getConstraintInsight(output: ScenarioOutput, input: ScenarioInput): Con
   }
 
   if (output.bindingConstraint === "income") {
+    const pieToFit = output.downPaymentToFitIncomeUF;
+    const savingsUF = getSavingsUF(input);
+    const morePieFits = pieToFit != null && savingsUF != null && savingsUF >= pieToFit - AFFORDABILITY_TOLERANCE_UF;
     return {
       label: "tu ingreso",
       title: "Restricción activa: tu ingreso",
-      body: `El dividendo exige ${formatUF(incomeGap, 2)} más de ingreso mensual para que la propiedad sea factible.`,
-      action: "La palanca principal es subir ingreso o bajar dividendo con más pie, mejor tasa o más plazo.",
+      body: `Con el pie mínimo, el dividendo exige ${formatUF(incomeGap, 2)} más de ingreso mensual.`,
+      action: morePieFits
+        ? `Tus ahorros alcanzan para resolverlo: con un pie de ${formatUF(pieToFit, 0)} (${formatCLP(pieToFit * input.ufValueCLP)}) el dividendo calza con tu ingreso.`
+        : "La palanca principal es subir ingreso o bajar dividendo con más pie, mejor tasa o más plazo.",
     };
   }
 
@@ -224,6 +238,14 @@ export function ResultCards({ output, input, status }: Props) {
               <p className="mt-2 text-sm font-medium text-blue-700">{constraintInsight.action}</p>
             </div>
           )}
+
+          {input.mode === "income" && savingsUF != null && output.realisticMaxPropertyUF != null && (
+            <p className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-900">
+              <span aria-hidden="true">!</span>
+              Usa todo tu ahorro como pie. Considera reservar para gastos operacionales (aprox. 1%–3%:{" "}
+              {formatUF(output.realisticMaxPropertyUF * 0.01, 0)}–{formatUF(output.realisticMaxPropertyUF * 0.03, 0)}).
+            </p>
+          )}
         </div>
       )}
 
@@ -237,9 +259,18 @@ export function ResultCards({ output, input, status }: Props) {
           />
         )}
 
-        {output.requiredIncomeUF != null && (
+        {input.mode === "income" && output.fullMonthlyDividendUF != null && incomeUF != null && incomeUF > 0 && (
           <Card
-            title={input.mode === "income" ? "Ingreso necesario para esta propiedad" : "Ingreso requerido"}
+            title="Uso de tu ingreso"
+            value={`${formatPctValue((output.fullMonthlyDividendUF / incomeUF) * 100)} de tu ingreso`}
+            sub={`Carga máxima configurada: ${input.maxDividendIncomeRatioPct}%`}
+            tooltipId="carga-financiera"
+          />
+        )}
+
+        {input.mode === "target_property" && output.requiredIncomeUF != null && (
+          <Card
+            title="Ingreso requerido"
             value={formatPair(output.requiredIncomeUF, uf)}
             tooltipId="carga-financiera"
             highlight={
@@ -256,8 +287,13 @@ export function ResultCards({ output, input, status }: Props) {
 
         {output.downPaymentUF != null && (
           <Card
-            title="Pie requerido"
+            title={input.mode === "income" ? "Pie que aportas" : "Pie requerido"}
             value={formatPair(output.downPaymentUF, uf)}
+            sub={
+              input.mode === "income" && output.minDownPaymentUF != null && savingsUF != null
+                ? `Todos tus ahorros · mínimo del banco: ${formatUF(output.minDownPaymentUF, 0)}`
+                : undefined
+            }
             tooltipId="pie"
             highlight={
               savingsUF != null
@@ -340,6 +376,12 @@ export function ResultCards({ output, input, status }: Props) {
             <p className="mt-2">
               Financiamiento: <code>crédito ≤ propiedad · {input.maxFinancingPct}%</code>
             </p>
+            {input.mode === "income" && (
+              <p className="mt-2">
+                Propiedad máxima: <code>mín(crédito máx. por ingreso + ahorros, ahorros ÷ pie mínimo)</code>. Todos tus
+                ahorros se usan como pie.
+              </p>
+            )}
           </div>
         )}
       </div>

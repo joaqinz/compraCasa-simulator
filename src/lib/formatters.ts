@@ -46,3 +46,15 @@ export function formatDisplayValue(
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("es-CL").format(value);
 }
+
+const decimalFormatters = new Map<number, Intl.NumberFormat>();
+
+/** Chilean decimal format (comma), e.g. 3,30 */
+export function formatDecimal(value: number, decimals = 2): string {
+  let fmt = decimalFormatters.get(decimals);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat("es-CL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    decimalFormatters.set(decimals, fmt);
+  }
+  return fmt.format(value);
+}

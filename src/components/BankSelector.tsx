@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { getBankPresetsSortedByCaeForTerm, resolveBankTermPreset } from "@/lib/bankPresets";
 import { Tooltip } from "./ui/Tooltip";
+import { formatDecimal, formatUF } from "@/lib/formatters";
+
+function toDisplay(value: number) {
+  return String(value).replace(".", ",");
+}
+
+function parseDecimal(text: string) {
+  const trimmed = text.trim();
+  // Accept both "3,3" (es-CL) and "3.3"; a comma marks the decimal separator when present.
+  return parseFloat(trimmed.includes(",") ? trimmed.replace(/\./g, "").replace(",", ".") : trimmed);
+}
 
 type ManualNumberInputProps = {
   value: number;
@@ -19,12 +30,18 @@ function ManualNumberInput({
   max,
   className,
 }: ManualNumberInputProps) {
-  const [display, setDisplay] = useState(String(value));
+  const [display, setDisplay] = useState(toDisplay(value));
   const focusedRef = useRef(false);
+
+  function clamp(next: number) {
+    const lo = min != null ? parseFloat(min) : -Infinity;
+    const hi = max != null ? parseFloat(max) : Infinity;
+    return Math.min(hi, Math.max(lo, next));
+  }
 
   useEffect(() => {
     if (!focusedRef.current) {
-      setDisplay(String(value));
+      setDisplay(toDisplay(value));
     }
   }, [value]);
 
@@ -34,30 +51,29 @@ function ManualNumberInput({
 
     if (nextDisplay === "") return;
 
-    const parsed = parseFloat(nextDisplay);
+    const parsed = parseDecimal(nextDisplay);
     if (!Number.isNaN(parsed)) {
-      onValueChange(parsed);
+      onValueChange(clamp(parsed));
     }
   }
 
   function handleBlur() {
     focusedRef.current = false;
 
-    const parsed = parseFloat(display);
+    const parsed = parseDecimal(display);
     if (!Number.isNaN(parsed)) {
-      setDisplay(String(parsed));
+      setDisplay(toDisplay(clamp(parsed)));
       return;
     }
 
-    setDisplay(String(value));
+    setDisplay(toDisplay(value));
   }
 
   return (
     <input
-      type="number"
-      step={step}
-      min={min}
-      max={max}
+      type="text"
+      inputMode="decimal"
+      data-step={step}
       className={className}
       value={display}
       onChange={handleChange}
@@ -76,6 +92,7 @@ type Props = {
   caePct: number;
   monthlyInsuranceUF: number;
   maxFinancingPct: number;
+  downPaymentPct: number;
   maxDividendIncomeRatioPct: number;
   loanAmountUF?: number;
   calculatedCaePct?: number;
@@ -116,6 +133,7 @@ export function BankSelector({
   caePct,
   monthlyInsuranceUF,
   maxFinancingPct,
+  downPaymentPct,
   maxDividendIncomeRatioPct,
   loanAmountUF,
   calculatedCaePct,
@@ -133,6 +151,9 @@ export function BankSelector({
   const sliderProgressPct = ((maxDividendIncomeRatioPct - 15) / (40 - 15)) * 100;
   const sliderValueLabelTransform =
     sliderProgressPct < 8 ? "translateX(0)" : sliderProgressPct > 92 ? "translateX(-100%)" : "translateX(-50%)";
+  const bankMinPiePct = 100 - maxFinancingPct;
+  const configuredPieOverridesBank = downPaymentPct > bankMinPiePct + 0.01;
+  const termAvailable = selectedBank?.availableTermsYears.includes(termYears) ?? true;
   const metricInputClass =
     "h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500";
 
@@ -171,7 +192,7 @@ export function BankSelector({
           >
             {sortedCaePresets.map(({ bank, term }) => (
               <option key={bank.bankId} value={bank.bankId}>
-                {bank.bankName} · CAE {term.caePct.toFixed(2)}%
+                {bank.bankName} · CAE {formatDecimal(term.caePct)}%
                 {term.termYears !== termYears ? ` (${term.termYears} años)` : ""}
               </option>
             ))}
@@ -199,16 +220,16 @@ export function BankSelector({
                 onValueChange={(value) => onChange({ annualRatePct: value })}
               />
             ) : (
-              `${annualRatePct.toFixed(2)}%`
+              `${formatDecimal(annualRatePct)}%`
             )}
           </Metric>
 
           <Metric label={isManual ? "CAE estimada" : "CAE"} tooltipTermId="cae">
             {isManual
               ? calculatedCaePct != null
-                ? `${calculatedCaePct.toFixed(2)}%`
+                ? `${formatDecimal(calculatedCaePct)}%`
                 : "Completa el escenario"
-              : `${caePct.toFixed(2)}%`}
+              : `${formatDecimal(caePct)}%`}
           </Metric>
 
           <Metric label="Seguro mensual" tooltipTermId="seguro-desgravamen">
@@ -221,7 +242,7 @@ export function BankSelector({
                 onValueChange={(value) => onChange({ monthlyInsuranceUF: value })}
               />
             ) : (
-              `${monthlyInsuranceUF.toFixed(2)} UF`
+              `${formatDecimal(monthlyInsuranceUF)} UF`
             )}
           </Metric>
 
@@ -233,19 +254,42 @@ export function BankSelector({
                 max="100"
                 className={metricInputClass}
                 value={maxFinancingPct}
-                onValueChange={(value) => onChange({ maxFinancingPct: value })}
+                onValueChange={(value) =>
+                  onChange({ maxFinancingPct: value, downPaymentPct: Math.max(0, 100 - value) })
+                }
               />
             ) : (
               `${maxFinancingPct}%`
             )}
           </Metric>
 
-          <Metric label="Plazos">
-            <span className="truncate">
-              {selectedBank?.availableTermsYears.join(", ") ?? "15, 20, 25, 30"} años
-            </span>
-          </Metric>
+          {!isManual && selectedBank && (
+            <Metric label="Plazos con dato CMF">
+              <span className={termAvailable ? "truncate" : "truncate text-amber-700"}>
+                {selectedBank.availableTermsYears.join(", ")} años
+              </span>
+            </Metric>
+          )}
           </div>
+          {configuredPieOverridesBank && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-4 text-amber-900">
+              <span>
+                Tu pie mínimo configurado ({formatDecimal(downPaymentPct, 0)}%) es mayor que el del banco ({formatDecimal(bankMinPiePct, 0)}%), así que se usa {formatDecimal(downPaymentPct, 0)}%.
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange({ downPaymentPct: bankMinPiePct })}
+                className="rounded-md border border-amber-300 bg-white px-2 py-0.5 font-semibold hover:bg-amber-100"
+              >
+                Usar {formatDecimal(bankMinPiePct, 0)}%
+              </button>
+            </div>
+          )}
+          {isManual && calculatedCaePct != null && loanAmountUF != null && (
+            <p className="mt-2 text-[10px] leading-4 text-slate-400">
+              CAE estimada sobre un crédito de {formatUF(loanAmountUF, 0)} con seguro mensual fijo. Es referencial, no una CAE bancaria.
+            </p>
+          )}
         </div>
       </div>
 
@@ -270,34 +314,6 @@ export function BankSelector({
           </a>
           <span>Valores referenciales.</span>
         </div>
-      )}
-
-      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
-        <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 text-sm" aria-hidden="true">◆</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-amber-900">¿Quieres simular con FOGAES?</p>
-            <p className="mt-1 text-[11px] leading-4 text-amber-900/75">
-              Usa Ingreso manual, 90% de financiamiento (10% de pie) y la tasa cotizada por tu banco.
-            </p>
-            <button
-              type="button"
-              onClick={() => onChange({ selectedBankId: "manual", downPaymentPct: 10, maxFinancingPct: 90 })}
-              className="mt-2 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-amber-900 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              Configurar escenario FOGAES
-            </button>
-            <p className="mt-2 text-[10px] leading-4 text-amber-900/65">
-              Parámetros referenciales; el banco confirma la tasa y elegibilidad. <a href="https://fogaes.cl/sitio/requisitos/" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-950">Ver requisitos</a>.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {isManual && calculatedCaePct != null && loanAmountUF != null && (
-        <p className="mt-2 text-[10px] leading-4 text-slate-400">
-          Estimada sobre un crédito de {loanAmountUF.toFixed(2)} UF con seguro mensual fijo. Es referencial, no una CAE bancaria.
-        </p>
       )}
 
       <div className="mt-4 grid gap-3 border-t border-slate-200/80 pt-4">
@@ -343,6 +359,27 @@ export function BankSelector({
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span>15%</span>
             <span>40%</span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 text-sm" aria-hidden="true">◆</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-amber-900">¿Quieres simular con FOGAES?</p>
+            <p className="mt-1 text-[11px] leading-4 text-amber-900/75">
+              Usa Ingreso manual, 90% de financiamiento (10% de pie) y la tasa cotizada por tu banco.
+            </p>
+            <button
+              type="button"
+              onClick={() => onChange({ selectedBankId: "manual", downPaymentPct: 10, maxFinancingPct: 90 })}
+              className="mt-2 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-amber-900 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              Configurar escenario FOGAES
+            </button>
+            <p className="mt-2 text-[10px] leading-4 text-amber-900/65">
+              Parámetros referenciales; el banco confirma la tasa y elegibilidad. <a href="https://fogaes.cl/sitio/requisitos/" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-950">Ver requisitos</a>.
+            </p>
           </div>
         </div>
       </div>

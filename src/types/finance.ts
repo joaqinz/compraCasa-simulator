@@ -38,7 +38,13 @@ export type ScenarioInput = {
 export type ScenarioOutput = {
   propertyPriceUF?: number;
   downPaymentUF?: number;
+  /** Minimum pie the bank/config requires for propertyPriceUF */
+  minDownPaymentUF?: number;
   loanAmountUF?: number;
+  /** Largest loan the income supports under the max carga financiera */
+  maxLoanByIncomeUF?: number;
+  /** Target mode: pie needed so the dividend fits the income */
+  downPaymentToFitIncomeUF?: number;
   baseMonthlyDividendUF?: number;
   fullMonthlyDividendUF?: number;
   requiredIncomeUF?: number;

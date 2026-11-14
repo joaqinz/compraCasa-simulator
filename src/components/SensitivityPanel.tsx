@@ -1,5 +1,6 @@
 import { lazy, Suspense, useRef, useState } from "react";
-import type { ScenarioInput, SensitivityRow } from "@/types/finance";
+import type { ScenarioInput, ScenarioOutput, SensitivityRow } from "@/types/finance";
+import { getEffectiveEquityRatio } from "@/lib/affordability";
 import type {
   RatePoint,
   PieRatePoint,
@@ -21,7 +22,7 @@ type Props = {
   termMaxData: TermMaxPoint[];
   targetTermData: TargetTermPoint[];
   rateMaxData: RateMaxPoint[];
-  maxPropertyByIncomeUF?: number;
+  output: ScenarioOutput;
   rateData: RatePoint[];
   pieRateData: PieRatePoint[];
   targetPropertyUF?: number;
@@ -48,7 +49,7 @@ export function SensitivityPanel({
   termMaxData,
   targetTermData,
   rateMaxData,
-  maxPropertyByIncomeUF,
+  output,
   rateData,
   pieRateData,
   targetPropertyUF,
@@ -109,10 +110,10 @@ export function SensitivityPanel({
         />
       ) : (
         <SavingsSensitivityPanel
+          output={output}
           currentSavingsUF={currentSavingsUF}
           ufValueCLP={input.ufValueCLP}
-          maxFinancingPct={input.maxFinancingPct}
-          maxPropertyByIncomeUF={maxPropertyByIncomeUF}
+          minPiePct={Math.round(getEffectiveEquityRatio(input) * 100)}
         />
       );
     }
@@ -199,9 +200,10 @@ export function SensitivityPanel({
               userIncomeUF={userIncomeUF}
               userSavingsUF={userSavingsUF}
               currentPiePct={input.downPaymentPct}
-              effectivePiePct={Math.max(input.downPaymentPct, 100 - input.maxFinancingPct)}
+              effectivePiePct={getEffectiveEquityRatio(input) * 100}
               termYears={input.termYears}
               bankName={selectedBankName}
+              usesAllSavingsAsPie={!isTargetMode}
             />
           </div>
         )}
